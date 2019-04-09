@@ -240,6 +240,11 @@ class MOTAccumulator(object):
                 self.last_match[o] = frameid
                 self._indices.append((frameid, next(eid)))
                 self._events.append([cat1, oids.data[i], hids.data[j], dists[i, j]])
+
+                if cat1!='MATCH' and cat2!='MATCH':
+                    self._indices.append((frameid, next(eid)))
+                    self._events.append(['CRITICAL', oids.data[i], hids.data[j], dists[i, j]])
+
                 oids[i] = ma.masked
                 hids[j] = ma.masked
                 self.m[o] = h
@@ -281,7 +286,7 @@ class MOTAccumulator(object):
     def new_event_dataframe():
         """Create a new DataFrame for event tracking."""
         idx = pd.MultiIndex(levels=[[],[]], labels=[[],[]], names=['FrameId','Event'])
-        cats = pd.Categorical([], categories=['RAW', 'FP', 'MISS', 'SWITCH', 'MATCH', 'TRANSFER', 'ASCEND', 'MIGRATE'])
+        cats = pd.Categorical([], categories=['RAW', 'FP', 'MISS', 'SWITCH', 'MATCH', 'TRANSFER', 'ASCEND', 'MIGRATE', 'CRITICAL'])
         df = pd.DataFrame(
             OrderedDict([
                 ('Type', pd.Series(cats)),          # Type of event. One of FP (false positive), MISS, SWITCH, MATCH
@@ -308,7 +313,7 @@ class MOTAccumulator(object):
 
         tevents = list(zip(*events))
 
-        raw_type = pd.Categorical(tevents[0], categories=['RAW', 'FP', 'MISS', 'SWITCH', 'MATCH', 'TRANSFER', 'ASCEND', 'MIGRATE'], ordered=False)
+        raw_type = pd.Categorical(tevents[0], categories=['RAW', 'FP', 'MISS', 'SWITCH', 'MATCH', 'TRANSFER', 'ASCEND', 'MIGRATE', 'CRITICAL'], ordered=False)
         series = [
             pd.Series(raw_type, name='Type'),
             pd.Series(tevents[1], dtype=object, name='OId'),

@@ -165,7 +165,7 @@ class MetricsHost:
         df_map = DfMap()
         df_map.full = df     
         df_map.raw = df[df.Type == 'RAW']
-        df_map.noraw = df[(df.Type != 'RAW') & (df.Type != 'ASCEND') & (df.Type != 'TRANSFER') & (df.Type != 'MIGRATE')]
+        df_map.noraw = df[(df.Type != 'RAW') & (df.Type != 'ASCEND') & (df.Type != 'TRANSFER') & (df.Type != 'MIGRATE') & (df.Type != 'CRITICAL')]
         df_map.extra = df[df.Type != 'RAW']
 
         cache = {}
@@ -366,6 +366,11 @@ def num_migrate(df):
     """Total number of track migrate."""
     return df.extra.Type.isin(['MIGRATE']).sum()
 simple_add_func.append(num_migrate)
+
+def num_critical(df):
+    """Total number of critical mistakes."""
+    return df.extra.Type.isin(['CRITICAL']).sum()
+simple_add_func.append(num_critical)
 
 def num_false_positives(df):
     """Total number of false positives (false-alarms)."""
@@ -614,6 +619,7 @@ def create():
     m.register(num_transfer, formatter='{:d}'.format)
     m.register(num_ascend, formatter='{:d}'.format)
     m.register(num_migrate, formatter='{:d}'.format)
+    m.register(num_critical, formatter='{:d}'.format)
     m.register(num_false_positives, formatter='{:d}'.format)
     m.register(num_misses, formatter='{:d}'.format)
     m.register(num_detections, formatter='{:d}'.format)
@@ -663,6 +669,7 @@ motchallenge_metrics = [
     'num_transfer',
     'num_ascend',
     'num_migrate',
+    'num_critical',
     # 'avg_iou',
     # 'switch_iou',
 ]
