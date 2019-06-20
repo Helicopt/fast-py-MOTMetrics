@@ -233,9 +233,9 @@ class MOTAccumulator(object):
                     self._events.append([cat2, oids.data[i], hids.data[j], dists[i, j]])
                 if vf!='' and (cat1!='MATCH' or cat2!='MATCH'):
                     if cat1=='SWITCH':
-                        vf.write('%s %d %d %d %d %d\n'%(subcat[:2], o, self.last_match[o], self.m[o], frameid, h))
+                        vf.write('%s %d %d %d %d %d\n'%(cat1[:2], o, self.last_match[o], self.m[o], frameid, h))
                     if cat2=='TRANSFER':
-                        vf.write('%s %d %d %d %d %d\n'%(subcat[:2], h, self.hypHistory[h], self.res_m[h], frameid, o))
+                        vf.write('%s %d %d %d %d %d\n'%(cat2[:2], h, self.hypHistory[h], self.res_m[h], frameid, o))
                 self.hypHistory[h] = frameid
                 self.last_match[o] = frameid
                 self._indices.append((frameid, next(eid)))
