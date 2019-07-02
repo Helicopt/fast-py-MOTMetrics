@@ -75,7 +75,7 @@ def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None):
                 fd = open(vsflag+'/'+k+'.log','w')
             else:
                 fd = ''
-            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = det[k])
+            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = None if det is None else det[k])
             if fd!='':
                 fd.close()
             accs.append(acc)
