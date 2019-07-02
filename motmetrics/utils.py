@@ -74,7 +74,7 @@ def compare_to_groundtruth(gt, dt, dist='iou', distfields=['X', 'Y', 'Width', 'H
     
     return acc
 
-def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, vflag = ''):
+def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, vflag = '', det = None):
     """Compare groundtruth and detector results.
 
     This method assumes both results are given in terms of DataFrames with at least the following fields
@@ -113,6 +113,8 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     #print('preprocess start.')
     #pst = time.time()
     dt = preprocessResult(dt, gt, inifile)
+    if det is not None:
+        det = preprocessResult(det, gt, inifile)
     #pen = time.time()
     #print('preprocess take ', pen - pst)
     if include_all:
@@ -124,6 +126,25 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     # case a frame is missing in detector results this will lead to FNs.
     allframeids = gt.index.union(dt.index).levels[0]
     analysis = {'hyp':{}, 'obj':{}}
+    m_plus = {(d+k):0 for d in list('YN') for k in ['Match', 'Track', 'FP', 'FN']}
+    def IoU_(xx, yy):
+        x1, y1, w1, h1 = xx
+        x2, y2, w2, h2 = yy
+        mx1 = max(x1, x2)
+        my1 = max(y1, y2)
+        mx2 = min(x1+w1, x2+w2)
+        my2 = min(y1+h1, y2+h2)
+        ix = max(mx2 - mx1, 0.)
+        iy = max(my2 - my1, 0.)
+        intersec = ix * iy
+        iou = intersec / (w1*h1+w2*h2-intersec)
+        return iou
+    IoU = lambda x, y: IoU_(x[:4], y[:4])
+    def has_det_cover(d, x):
+        for det in d.values:
+            if IoU(det, x)>0.5:
+                return True
+        return False
     for fid in allframeids:
         #st = time.time()
         oids = np.empty(0)
@@ -150,9 +171,30 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
 
         if oids.shape[0] > 0 and hids.shape[0] > 0:
             dists = compute_dist(fgt[distfields].values, fdt[distfields].values)
-        
-        acc.update(oids, hids, dists, frameid=fid, vf = vflag)
+        dids = None
+        if det is not None:
+            dgt = {}
+            dhy = {}
+            dids = {'det_gt': dgt, 'det_hyp': dhy}
+            if fid in det.index:
+                dd = det.loc[fid]
+            else:
+                dd = None
+            if fid in dt.index:
+                fdt = dt.loc[fid]
+                for hid in hids:
+                    dhy[hid] = False if dd is None else has_det_cover(dd, fdt.loc[hid].values)
+            if fid in gt.index:
+                fgt = gt.loc[fid]
+                for oid in oids:
+                    dgt[oid] = False if dd is None else has_det_cover(dd, fgt.loc[oid].values)
+
+        acc.update(oids, hids, dists, frameid=fid, vf = vflag, metric_plus = dids)
+        if dids:
+            for k in m_plus:
+                m_plus[k]+=dids[k]
         #en = time.time()
         #print(fid, ' time ', en - st)
-    
+    if det is not None:
+        analysis['metric_plus'] = m_plus
     return acc, analysis

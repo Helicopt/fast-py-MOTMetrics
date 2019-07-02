@@ -233,3 +233,34 @@ motchallenge_metric_names = {
     'num_migrate' : 'IDm',
 }
 """A list mappings for metric names to comply with MOTChallenge."""
+
+motplus_metric_names = {
+    'idf1' : 'IDF1',
+    'idp' : 'IDP',
+    'idr' : 'IDR',
+    'recall' : 'Rcll', 
+    'precision' : 'Prcn',
+    'num_unique_objects' : 'GT', 
+    'mostly_tracked' : 'MT', 
+    'partially_tracked' : 'PT', 
+    'mostly_lost': 'ML',  
+    'num_false_positives' : 'FP', 
+    'num_misses' : 'FN',
+    'num_switches' : 'IDs',
+    'num_fragmentations' : 'FM',
+    'mota' : 'MOTA',
+    'motp' : 'MOTP',
+    'num_transfer' : 'IDt',
+    'num_ascend' : 'IDa',
+    'num_migrate' : 'IDm',
+    'association_precision': 'AsP',
+    'association_recall': 'AsR',
+    'tracking_precision': 'TrP',
+    'tracking_recall': 'TrR',
+    #'detection_precision': 'DtP',
+    #'detection_recall': 'DtR',
+    'tracker_precision': 'TP',
+    'tracker_recall': 'TR',
+    'tracker_accuracy': 'TA',
+}
+"""A list mappings for metric names to comply with MOTChallenge."""

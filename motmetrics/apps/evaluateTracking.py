@@ -55,6 +55,7 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('groundtruths', type=str, help='Directory containing ground truth files.')   
     parser.add_argument('tests', type=str, help='Directory containing tracker result files')
     parser.add_argument('seqmap', type=str, help='Text file containing all sequences name')
+    parser.add_argument('-d', '--detections', type=str, default=None, help='Text file containing detection files')
     parser.add_argument('--log', type=str, help='a place to record result and outputfile of mistakes', default='')
     parser.add_argument('--loglevel', type=str, help='Log level', default='info')
     parser.add_argument('--fmt', type=str, help='Data format', default='mot15-2D')
@@ -63,7 +64,7 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--iou', type=float, default=0.5, help='special IoU threshold requirement for small targets')
     return parser.parse_args()
 
-def compare_dataframes(gts, ts, vsflag = '', iou = 0.5):
+def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None):
     accs = []
     anas = []
     names = []
@@ -74,7 +75,7 @@ def compare_dataframes(gts, ts, vsflag = '', iou = 0.5):
                 fd = open(vsflag+'/'+k+'.log','w')
             else:
                 fd = ''
-            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd)
+            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = det[k])
             if fd!='':
                 fd.close()
             accs.append(acc)
@@ -151,14 +152,27 @@ if __name__ == '__main__':
     
     gt = OrderedDict([(seqs[i], (mm.io.loadtxt(f, fmt=args.fmt), os.path.join(args.groundtruths, seqs[i], 'seqinfo.ini')) ) for i, f in enumerate(gtfiles)])
     ts = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt)) for i, f in enumerate(tsfiles)])    
+    if args.detections is not None:
+        dsfiles = [os.path.join(args.detections, '%s.txt'%i) for i in seqs]
+        for dsfile in dsfiles:
+            if not os.path.isfile(dsfile):
+                logging.error('ds File %s not found.'%dsfile)
+                exit(1)
+        ds = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt)) for i, f in enumerate(dsfiles)])
+    else:
+        ds = None
 
     mh = mm.metrics.create()
     st = time.time()
-    accs, analysis, names = compare_dataframes(gt, ts, args.log, 1.-args.iou)
+    accs, analysis, names = compare_dataframes(gt, ts, args.log, 1.-args.iou, det = ds)
     logging.info('adding frames: %.3f seconds.'%(time.time()-st))
     
     logging.info('Running metrics')
     
-    summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
-    print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+    if args.detections is None:
+        summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
+        print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+    else:
+        summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motplus_metrics, generate_overall=True)
+        print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motplus_metric_names))
     logging.info('Completed')

@@ -573,6 +573,82 @@ def idf1(df, idtp, num_objects, num_predictions):
 def idf1_m(partials, idtp, num_objects, num_predictions):
     return 2 * idtp / (num_objects + num_predictions)
 
+def YMatch(df, ana = None):
+    return ana['metric_plus']['YMatch']
+simple_add_func.append(YMatch)
+
+def NMatch(df, ana = None):
+    return ana['metric_plus']['NMatch']
+simple_add_func.append(NMatch)
+
+def YTrack(df, ana = None):
+    return ana['metric_plus']['YTrack']
+simple_add_func.append(YTrack)
+
+def NTrack(df, ana = None):
+    return ana['metric_plus']['NTrack']
+simple_add_func.append(NTrack)
+
+def YFP(df, ana = None):
+    return ana['metric_plus']['YFP']
+simple_add_func.append(YFP)
+
+def NFP(df, ana = None):
+    return ana['metric_plus']['NFP']
+simple_add_func.append(NFP)
+
+def YFN(df, ana = None):
+    return ana['metric_plus']['YFN']
+simple_add_func.append(YFN)
+
+def NFN(df, ana = None):
+    return ana['metric_plus']['NFN']
+simple_add_func.append(NFN)
+
+def association_precision(df, YMatch, NMatch, YFP):
+    return YMatch / (YMatch + NMatch + YFP)
+
+def association_precision_m(partials, YMatch, NMatch, YFP):
+    return YMatch / (YMatch + NMatch + YFP)
+
+def association_recall(df, YMatch, NMatch, YFN):
+    return YMatch / (YMatch + NMatch + YFN)
+
+def association_recall_m(partials, YMatch, NMatch, YFN):
+    return YMatch / (YMatch + NMatch + YFN)
+
+def tracking_precision(df, YTrack, NTrack, NFP):
+    return YTrack / (YTrack + NTrack + NFP)
+
+def tracking_precision_m(partials, YTrack, NTrack, NFP):
+    return YTrack / (YTrack + NTrack + NFP)
+
+def tracking_recall(df, YTrack, NTrack, NFN):
+    return YTrack / (YTrack + NTrack + NFN)
+
+def tracking_recall_m(partials, YTrack, NTrack, NFN):
+    return YTrack / (YTrack + NTrack + NFN)
+
+def tracker_precision(df, YMatch, YTrack, NMatch, NTrack, NFP, YFP):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFP)
+
+def tracker_precision_m(partials, YMatch, YTrack, NMatch, NTrack, NFP, YFP):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFP)
+
+def tracker_recall(df, YMatch, YTrack, NMatch, NTrack, NFN, YFN):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFN + YFN)
+
+def tracker_recall_m(partials, YMatch, YTrack, NMatch, NTrack, NFN, YFN):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFN + YFN)
+
+def tracker_accuracy(df, YMatch, YTrack, NMatch, NTrack, YFN, NFP):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFN)
+
+def tracker_accuracy_m(partials, YMatch, YTrack, NMatch, NTrack, YFN, NFP):
+    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFN)
+
+
+
 # def iou_sum(df):
 #     """Extra measures: sum IoU of all matches"""
 #     return (1 - df.noraw[(df.noraw.Type=='MATCH')|(df.noraw.Type=='SWITCH')].D).sum()
@@ -646,6 +722,23 @@ def create():
     m.register(idr, formatter='{:.1%}'.format)
     m.register(idf1, formatter='{:.1%}'.format)
 
+    m.register(YMatch)
+    m.register(NMatch)
+    m.register(YTrack)
+    m.register(NTrack)
+    m.register(YFP)
+    m.register(NFP)
+    m.register(YFN)
+    m.register(NFN)
+    m.register(association_precision, formatter='{:.1%}'.format)
+    m.register(association_recall, formatter='{:.1%}'.format)
+    m.register(tracking_precision, formatter='{:.1%}'.format)
+    m.register(tracking_recall, formatter='{:.1%}'.format)
+    #m.register(detection_precision, formatter='{:.1%}'.format)
+    #m.register(detection_recall, formatter='{:.1%}'.format)
+    m.register(tracker_precision, formatter='{:.1%}'.format)
+    m.register(tracker_recall, formatter='{:.1%}'.format)
+    m.register(tracker_accuracy, formatter='{:.1%}'.format)
     # m.register(iou_sum, formatter='{:.3f}'.format)
     # m.register(siou_sum, formatter='{:.3f}'.format)
     # m.register(avg_iou, formatter='{:.3f}'.format)
@@ -671,6 +764,47 @@ motchallenge_metrics = [
     'num_transfer',
     'num_ascend',
     'num_migrate',
+    # 'avg_iou',
+    # 'switch_iou',
+]
+"""A list of all metrics from MOTChallenge."""
+
+motplus_metrics = [
+    'idf1',
+    'idp',
+    'idr',
+    'recall', 
+    'precision', 
+    'num_unique_objects', 
+    'mostly_tracked', 
+    'partially_tracked', 
+    'mostly_lost', 
+    'num_false_positives', 
+    'num_misses',
+    'num_switches',
+    'num_fragmentations',
+    'mota',
+    'motp',
+    'num_transfer',
+    'num_ascend',
+    'num_migrate',
+    'YMatch',
+    'NMatch',
+    'YTrack',
+    'NTrack',
+    'YFP',
+    'NFP',
+    'YFN',
+    'NFN',
+    'association_precision',
+    'association_recall',
+    'tracking_precision',
+    'tracking_recall',
+    #'detection_precision',
+    #'detection_recall',
+    'tracker_precision',
+    'tracker_recall',
+    'tracker_accuracy',
     # 'avg_iou',
     # 'switch_iou',
 ]

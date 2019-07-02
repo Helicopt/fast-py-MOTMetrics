@@ -100,7 +100,7 @@ class MOTAccumulator(object):
         self.dirty_events = True
         self.cached_events_df = None
 
-    def update(self, oids, hids, dists, frameid=None, vf=''):
+    def update(self, oids, hids, dists, frameid=None, vf='', metric_plus = None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -144,6 +144,18 @@ class MOTAccumulator(object):
         oids = ma.array(oids, mask=np.zeros(len(oids)))
         hids = ma.array(hids, mask=np.zeros(len(hids)))
         dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0]).copy()
+
+        if metric_plus is not None:
+            d_oids = metric_plus['det_gt']
+            d_hids = metric_plus['det_hyp']
+            metric_plus['YMatch'] = 0
+            metric_plus['NMatch'] = 0
+            metric_plus['YTrack'] = 0
+            metric_plus['NTrack'] = 0
+            metric_plus['YFP'] = 0
+            metric_plus['NFP'] = 0
+            metric_plus['YFN'] = 0
+            metric_plus['NFN'] = 0
 
         if frameid is None:
             assert self.auto_id, 'auto-id is not enabled'
@@ -190,6 +202,11 @@ class MOTAccumulator(object):
                 if np.isfinite(dists[i,j]):
                     o = oids[i]
                     h = hids[j]
+                    if metric_plus is not None:
+                        if d_oids[o]:
+                            metric_plus['YMatch'] += 1
+                        else:
+                            metric_plus['YTrack'] += 1
                     oids[i] = ma.masked
                     hids[j] = ma.masked
                     self.m[oids.data[i]] = hids.data[j]
@@ -215,7 +232,19 @@ class MOTAccumulator(object):
                             self.m[o] != h and \
                             abs(frameid - self.last_occurrence[o]) <= self.max_switch_time
                 cat1 = 'SWITCH' if is_switch else 'MATCH'
+
+                if cat1=='MATCH':
+                    if metric_plus is not None:
+                        if d_oids[o]:
+                            metric_plus['YMatch'] += 1
+                        else:
+                            metric_plus['YTrack'] += 1
                 if cat1=='SWITCH':
+                    if metric_plus is not None:
+                        if d_oids[o]:
+                            metric_plus['NMatch'] += 1
+                        else:
+                            metric_plus['NTrack'] += 1
                     if h not in self.hypHistory:
                         subcat = 'ASCEND'
                         self._indices.append((frameid, next(eid)))
@@ -249,6 +278,11 @@ class MOTAccumulator(object):
         for o in oids[~oids.mask]:
             self._indices.append((frameid, next(eid)))
             self._events.append(['MISS', o, np.nan, np.nan])
+            if metric_plus is not None:
+                if d_oids[o]:
+                    metric_plus['YFN'] += 1
+                else:
+                    metric_plus['NFN'] += 1
             if vf!='':
                 vf.write('FN %d %d\n'%(frameid, o))
 
@@ -256,6 +290,11 @@ class MOTAccumulator(object):
         for h in hids[~hids.mask]:
             self._indices.append((frameid, next(eid)))
             self._events.append(['FP', np.nan, h, np.nan])
+            if metric_plus is not None:
+                if d_hids[h]:
+                    metric_plus['YFP'] += 1
+                else:
+                    metric_plus['NFP'] += 1
             if vf!='':
                 vf.write('FP %d %d\n'%(frameid, h))
 
