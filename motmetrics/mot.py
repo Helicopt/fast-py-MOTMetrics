@@ -156,6 +156,7 @@ class MOTAccumulator(object):
             metric_plus['NFP'] = 0
             metric_plus['YFN'] = 0
             metric_plus['NFN'] = 0
+            metric_plus['Filter'] = 0
 
         if frameid is None:
             assert self.auto_id, 'auto-id is not enabled'
@@ -203,8 +204,10 @@ class MOTAccumulator(object):
                     o = oids[i]
                     h = hids[j]
                     if metric_plus is not None:
-                        if d_oids[o]:
+                        if d_hids[h] or d_oids[o]:
                             metric_plus['YMatch'] += 1
+                            if d_hids[h] and d_oids[o]:
+                                metric_plus['Filter'] += 1
                         else:
                             metric_plus['YTrack'] += 1
                     oids[i] = ma.masked
@@ -235,14 +238,18 @@ class MOTAccumulator(object):
 
                 if cat1=='MATCH':
                     if metric_plus is not None:
-                        if d_oids[o]:
+                        if d_hids[h] or d_oids[o]:
                             metric_plus['YMatch'] += 1
+                            if d_hids[h] and d_oids[o]:
+                                metric_plus['Filter'] += 1
                         else:
                             metric_plus['YTrack'] += 1
                 if cat1=='SWITCH':
                     if metric_plus is not None:
-                        if d_oids[o]:
+                        if d_hids[h] or d_oids[o]:
                             metric_plus['NMatch'] += 1
+                            if d_hids[h] and d_oids[o]:
+                                metric_plus['Filter'] += 1
                         else:
                             metric_plus['NTrack'] += 1
                     if h not in self.hypHistory:
