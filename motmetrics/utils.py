@@ -127,6 +127,7 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     allframeids = gt.index.union(dt.index).levels[0]
     analysis = {'hyp':{}, 'obj':{}}
     m_plus = {(d+k):0 for d in list('YN') for k in ['Match', 'Track', 'FP', 'FN']}
+    m_plus['Filter'] = 0
     def IoU_(xx, yy):
         x1, y1, w1, h1 = xx
         x2, y2, w2, h2 = yy
@@ -140,11 +141,6 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
         iou = intersec / (w1*h1+w2*h2-intersec)
         return iou
     IoU = lambda x, y: IoU_(x[:4], y[:4])
-    def has_det_cover(d, x):
-        for det in d.values:
-            if IoU(det, x)>0.5:
-                return True
-        return False
     for fid in allframeids:
         #st = time.time()
         oids = np.empty(0)
@@ -172,22 +168,50 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
         if oids.shape[0] > 0 and hids.shape[0] > 0:
             dists = compute_dist(fgt[distfields].values, fdt[distfields].values)
         dids = None
+        #print(det)
+        #print(dt)
+        #print(gt)
         if det is not None:
-            dgt = {}
-            dhy = {}
+            dgt = {i: False for i in oids}
+            dhy = {i: False for i in hids}
             dids = {'det_gt': dgt, 'det_hyp': dhy}
             if fid in det.index:
                 dd = det.loc[fid]
             else:
                 dd = None
-            if fid in dt.index:
-                fdt = dt.loc[fid]
-                for hid in hids:
-                    dhy[hid] = False if dd is None else has_det_cover(dd, fdt.loc[hid].values)
-            if fid in gt.index:
-                fgt = gt.loc[fid]
-                for oid in oids:
-                    dgt[oid] = False if dd is None else has_det_cover(dd, fgt.loc[oid].values)
+            if dd is not None:
+                if fid in gt.index:
+                    fgt = gt.loc[fid]
+                else:
+                    fgt = None
+                if fid in dt.index:
+                    fdt = dt.loc[fid]
+                else:
+                    fdt = None
+                for d in dd.values:
+                    mx_iou = 0.
+                    mx_id = None
+                    if mx_id is None and fdt is not None:
+                        for hid in hids:
+                            if dhy[hid]: continue
+                            _iou = IoU(d, fdt.loc[hid].values)
+                            if _iou>mx_iou and _iou>0.5:
+                                mx_id = dhy, hid
+                                mx_iou = _iou
+                    if mx_id is None and fgt is not None:
+                        for oid in oids:
+                            if dgt[oid]: continue
+                            _iou = IoU(d, fgt.loc[oid].values)
+                            if _iou>mx_iou and _iou>0.5:
+                                mx_id = dgt, oid
+                                mx_iou = _iou
+
+                    if mx_id is not None:
+                        mx_id[0][mx_id[1]] = True
+                    else:
+                        m_plus['Filter']+=1
+                    #print(d)
+                    #print(mx_id[1])
 
         acc.update(oids, hids, dists, frameid=fid, vf = vflag, metric_plus = dids)
         if dids:

@@ -444,34 +444,34 @@ simple_add_func.append(num_fragmentations)
 
 def motp(df, num_detections):
     """Multiple object tracker precision."""
-    return df.noraw['D'].sum() / num_detections
+    return df.noraw['D'].sum() / max(num_detections, 1)
 
 def motp_m(partials, num_detections):
     res = 0
     for v in partials:
         res += v['motp'] * v['num_detections']
-    return res / num_detections
+    return res / max(num_detections, 1)
 
 def mota(df, num_misses, num_switches, num_false_positives, num_objects):
     """Multiple object tracker accuracy."""
-    return 1. - (num_misses + num_switches + num_false_positives) / num_objects
+    return 1. - (num_misses + num_switches + num_false_positives) / max(num_objects, 1)
 
 def mota_m(partials, num_misses, num_switches, num_false_positives, num_objects):
-    return 1. - (num_misses + num_switches + num_false_positives) / num_objects
+    return 1. - (num_misses + num_switches + num_false_positives) / max(num_objects, 1)
 
 def precision(df, num_detections, num_false_positives):
     """Number of detected objects over sum of detected and false positives."""
-    return num_detections / (num_false_positives + num_detections)
+    return num_detections / max(num_false_positives + num_detections, 1)
 
 def precision_m(partials, num_detections, num_false_positives):
-    return num_detections / (num_false_positives + num_detections)
+    return num_detections / max(num_false_positives + num_detections, 1)
 
 def recall(df, num_detections, num_objects):
     """Number of detections over number of objects."""
-    return num_detections / num_objects
+    return num_detections / max(num_objects, 1)
 
 def recall_m(partials, num_detections, num_objects):
-    return num_detections / num_objects
+    return num_detections / max(num_objects, 1)
 
 def id_global_assignment(df, ana = None):
     """ID measures: Global min-cost assignment for ID measures."""
@@ -554,24 +554,24 @@ simple_add_func.append(idtp)
 
 def idp(df, idtp, idfp):
     """ID measures: global min-cost precision."""
-    return idtp / (idtp + idfp)
+    return idtp / max(idtp + idfp, 1)
 
 def idp_m(partials, idtp, idfp):
-    return idtp / (idtp + idfp)
+    return idtp / max(idtp + idfp, 1)
 
 def idr(df, idtp, idfn):
     """ID measures: global min-cost recall."""
-    return idtp / (idtp + idfn)
+    return idtp / max(idtp + idfn, 1)
 
 def idr_m(partials, idtp, idfn):
-    return idtp / (idtp + idfn)
+    return idtp / max(idtp + idfn, 1)
 
 def idf1(df, idtp, num_objects, num_predictions):
     """ID measures: global min-cost F1 score."""
-    return 2 * idtp / (num_objects + num_predictions)
+    return 2 * idtp / max(num_objects + num_predictions, 1)
 
 def idf1_m(partials, idtp, num_objects, num_predictions):
-    return 2 * idtp / (num_objects + num_predictions)
+    return 2 * idtp / max(num_objects + num_predictions, 1)
 
 def YMatch(df, ana = None):
     return ana['metric_plus']['YMatch']
@@ -605,47 +605,63 @@ def NFN(df, ana = None):
     return ana['metric_plus']['NFN']
 simple_add_func.append(NFN)
 
+def Filter(df, ana = None):
+    return ana['metric_plus']['Filter']
+simple_add_func.append(Filter)
+
 def association_precision(df, YMatch, NMatch, YFP):
-    return YMatch / (YMatch + NMatch + YFP)
+    return YMatch / max(YMatch + NMatch + YFP, 1)
 
 def association_precision_m(partials, YMatch, NMatch, YFP):
-    return YMatch / (YMatch + NMatch + YFP)
+    return YMatch / max(YMatch + NMatch + YFP, 1)
 
 def association_recall(df, YMatch, NMatch, YFN):
-    return YMatch / (YMatch + NMatch + YFN)
+    return YMatch / max(YMatch + NMatch + YFN, 1)
 
 def association_recall_m(partials, YMatch, NMatch, YFN):
-    return YMatch / (YMatch + NMatch + YFN)
+    return YMatch / max(YMatch + NMatch + YFN, 1)
 
 def tracking_precision(df, YTrack, NTrack, NFP):
-    return YTrack / (YTrack + NTrack + NFP)
+    return YTrack / max(YTrack + NTrack + NFP, 1)
 
 def tracking_precision_m(partials, YTrack, NTrack, NFP):
-    return YTrack / (YTrack + NTrack + NFP)
+    return YTrack / max(YTrack + NTrack + NFP, 1)
 
 def tracking_recall(df, YTrack, NTrack, NFN):
-    return YTrack / (YTrack + NTrack + NFN)
+    return YTrack / max(YTrack + NTrack + NFN, 1)
 
 def tracking_recall_m(partials, YTrack, NTrack, NFN):
-    return YTrack / (YTrack + NTrack + NFN)
+    return YTrack / max(YTrack + NTrack + NFN, 1)
+
+def detection_precision(df, YMatch, NMatch, YFN, YFP, Filter):
+    return (YMatch + NMatch + YFN) / max(YMatch + NMatch + YFN + YFP + Filter, 1)
+
+def detection_precision_m(partials, YMatch, NMatch, YFN, YFP, Filter):
+    return (YMatch + NMatch + YFN) / max(YMatch + NMatch + YFN + YFP + Filter, 1)
+
+def detection_recall(df, YMatch, NMatch, YFN, NFN, YTrack, NTrack):
+    return (YMatch + NMatch + YFN) / max(YMatch + NMatch + YFN + NFN + YTrack + NTrack, 1)
+
+def detection_recall_m(partials, YMatch, NMatch, YFN, NFN, YTrack, NTrack):
+    return (YMatch + NMatch + YFN) / max(YMatch + NMatch + YFN + NFN + YTrack + NTrack, 1)
 
 def tracker_precision(df, YMatch, YTrack, NMatch, NTrack, NFP, YFP):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFP)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFP + YFP, 1)
 
 def tracker_precision_m(partials, YMatch, YTrack, NMatch, NTrack, NFP, YFP):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFP)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFP + YFP, 1)
 
 def tracker_recall(df, YMatch, YTrack, NMatch, NTrack, NFN, YFN):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFN + YFN)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFN + YFN, 1)
 
 def tracker_recall_m(partials, YMatch, YTrack, NMatch, NTrack, NFN, YFN):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFN + YFN)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFN + YFN, 1)
 
 def tracker_accuracy(df, YMatch, YTrack, NMatch, NTrack, YFN, NFP):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFN)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFP + YFN, 1)
 
 def tracker_accuracy_m(partials, YMatch, YTrack, NMatch, NTrack, YFN, NFP):
-    return (YMatch + YTrack) / (YMatch + NMatch + YTrack + NTrack + NFP + YFN)
+    return (YMatch + YTrack) / max(YMatch + NMatch + YTrack + NTrack + NFP + YFN, 1)
 
 
 
@@ -730,12 +746,13 @@ def create():
     m.register(NFP)
     m.register(YFN)
     m.register(NFN)
+    m.register(Filter)
     m.register(association_precision, formatter='{:.1%}'.format)
     m.register(association_recall, formatter='{:.1%}'.format)
     m.register(tracking_precision, formatter='{:.1%}'.format)
     m.register(tracking_recall, formatter='{:.1%}'.format)
-    #m.register(detection_precision, formatter='{:.1%}'.format)
-    #m.register(detection_recall, formatter='{:.1%}'.format)
+    m.register(detection_precision, formatter='{:.1%}'.format)
+    m.register(detection_recall, formatter='{:.1%}'.format)
     m.register(tracker_precision, formatter='{:.1%}'.format)
     m.register(tracker_recall, formatter='{:.1%}'.format)
     m.register(tracker_accuracy, formatter='{:.1%}'.format)
@@ -771,23 +788,18 @@ motchallenge_metrics = [
 
 motplus_metrics = [
     'idf1',
-    'idp',
-    'idr',
     'recall', 
     'precision', 
-    'num_unique_objects', 
-    'mostly_tracked', 
+    #'num_unique_objects', 
+    #'mostly_tracked', 
     #'partially_tracked',
-    'mostly_lost', 
+    #'mostly_lost', 
     'num_false_positives', 
     'num_misses',
     'num_switches',
-    'num_fragmentations',
     'mota',
     'motp',
     'num_transfer',
-    'num_ascend',
-    'num_migrate',
     'YMatch',
     'NMatch',
     'YTrack',
@@ -796,12 +808,13 @@ motplus_metrics = [
     'NFP',
     'YFN',
     'NFN',
+    'Filter',
     'association_precision',
     'association_recall',
     'tracking_precision',
     'tracking_recall',
-    #'detection_precision',
-    #'detection_recall',
+    'detection_precision',
+    'detection_recall',
     'tracker_precision',
     'tracker_recall',
     'tracker_accuracy',

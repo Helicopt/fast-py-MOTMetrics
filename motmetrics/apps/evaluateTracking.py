@@ -62,6 +62,7 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--solver', type=str, help='LAP solver to use')
     parser.add_argument('--skip', type=int, default=0, help='skip frames n means choosing one frame for every (n+1) frames')
     parser.add_argument('--label', type=str, default='', help='class label for drop detection results')
+    parser.add_argument('--block', type=int, default=1, help='block frames n means choosing first frame as key frame for every n frames')
     parser.add_argument('--iou', type=float, default=0.5, help='special IoU threshold requirement for small targets')
     return parser.parse_args()
 
@@ -98,17 +99,20 @@ def parseSequences(seqmap):
     fd.close()
     return res
 
-def generateSkippedGT(gtfile, skip, fmt):
+def generateSkippedGT(gtfile, skip, fmt, block = 1):
     tf = NamedTemporaryFile(delete=False, mode='w')
     with open(gtfile) as fd:
         lines = fd.readlines()
         for line in lines:
             arr = line.strip().split(',')
             fr = int(arr[0])
-            if fr%(skip+1)!=1:
+            if skip!=0 and fr%(skip+1)!=1:
                 continue
             pos = line.find(',')
-            newline = str(fr//(skip+1)+1) + line[pos:]
+            new_fr = fr//(skip+1)+(1 if skip>0 else 0)
+            if block!=1 and new_fr%block!=1:
+                continue
+            newline = str(new_fr) + line[pos:]
             tf.write(newline)
     tf.close()
     tempfile = tf.name
@@ -163,6 +167,8 @@ if __name__ == '__main__':
             if not os.path.isfile(dsfile):
                 logging.error('ds File %s not found.'%dsfile)
                 exit(1)
+        for i, dsfile in enumerate(dsfiles):
+            dsfiles[i] = generateSkippedGT(dsfile, args.skip, fmt=args.fmt, block = args.block)
         ds = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt)) for i, f in enumerate(dsfiles)])
     else:
         ds = None
