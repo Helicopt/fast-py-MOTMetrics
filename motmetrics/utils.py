@@ -11,7 +11,7 @@ import numpy as np
 
 from .mot import MOTAccumulator
 from .distances import iou_matrix, norm2squared_matrix
-from .preprocess import preprocessResult
+from .preprocess import preprocessResult, preprocessResult_det
 
 def compare_to_groundtruth(gt, dt, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5):
     """Compare groundtruth and detector results.
@@ -74,7 +74,7 @@ def compare_to_groundtruth(gt, dt, dist='iou', distfields=['X', 'Y', 'Width', 'H
     
     return acc
 
-def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, vflag = '', det = None):
+def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, vflag = '', det = None, label=None):
     """Compare groundtruth and detector results.
 
     This method assumes both results are given in terms of DataFrames with at least the following fields
@@ -114,7 +114,7 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     #pst = time.time()
     dt = preprocessResult(dt, gt, inifile)
     if det is not None:
-        det = preprocessResult(det, gt, inifile)
+        det = preprocessResult_det(det, gt, inifile, label)
     #pen = time.time()
     #print('preprocess take ', pen - pst)
     if include_all:

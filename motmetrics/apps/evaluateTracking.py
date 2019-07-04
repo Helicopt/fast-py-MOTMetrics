@@ -52,7 +52,7 @@ Seqmap for test data
 Sequences of ground truth and test will be matched according to the `<SEQUENCE_X>`
 string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
 
-    parser.add_argument('groundtruths', type=str, help='Directory containing ground truth files.')   
+    parser.add_argument('groundtruths', type=str, help='Directory containing ground truth files.')
     parser.add_argument('tests', type=str, help='Directory containing tracker result files')
     parser.add_argument('seqmap', type=str, help='Text file containing all sequences name')
     parser.add_argument('-d', '--detections', type=str, default=None, help='Text file containing detection files')
@@ -61,10 +61,11 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--fmt', type=str, help='Data format', default='mot15-2D')
     parser.add_argument('--solver', type=str, help='LAP solver to use')
     parser.add_argument('--skip', type=int, default=0, help='skip frames n means choosing one frame for every (n+1) frames')
+    parser.add_argument('--label', type=str, default='', help='class label for drop detection results')
     parser.add_argument('--iou', type=float, default=0.5, help='special IoU threshold requirement for small targets')
     return parser.parse_args()
 
-def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None):
+def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None, label=None):
     accs = []
     anas = []
     names = []
@@ -75,7 +76,7 @@ def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None):
                 fd = open(vsflag+'/'+k+'.log','w')
             else:
                 fd = ''
-            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = None if det is None else det[k])
+            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = None if det is None else det[k], label=label)
             if fd!='':
                 fd.close()
             accs.append(acc)
@@ -117,10 +118,14 @@ def generateSkippedGT(gtfile, skip, fmt):
 if __name__ == '__main__':
 
     args = parse_args()
+    # args.groundtruths = '/home/sensetime/Desktop/MOT/test_pyMOT_data/CQ_valid'
+    # args.tests = '/home/sensetime/Desktop/MOT/test_pyMOT_data/CQVP_r50_samot_filtered'
+    # args.seqmap = '/home/sensetime/Desktop/MOT/test_pyMOT_data/CQVP_seq.txt'
+    # args.detections = '/home/sensetime/Desktop/MOT/VISUAL/valid_dets'
 
     loglevel = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(loglevel, int):
-        raise ValueError('Invalid log level: {} '.format(args.loglevel))        
+        raise ValueError('Invalid log level: {} '.format(args.loglevel))
     logging.basicConfig(level=loglevel, format='%(asctime)s %(levelname)s - %(message)s', datefmt='%I:%M:%S')
 
     if args.solver:
@@ -164,7 +169,7 @@ if __name__ == '__main__':
 
     mh = mm.metrics.create()
     st = time.time()
-    accs, analysis, names = compare_dataframes(gt, ts, args.log, 1.-args.iou, det = ds)
+    accs, analysis, names = compare_dataframes(gt, ts, args.log, 1.-args.iou, det = ds, label=args.label)
     logging.info('adding frames: %.3f seconds.'%(time.time()-st))
     
     logging.info('Running metrics')

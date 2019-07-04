@@ -75,6 +75,54 @@ def load_motchallenge(fname, **kwargs):
     # Remove all rows without sufficient confidence
     return df[df['Confidence'] >= min_confidence]
 
+
+# def load_motchallenge(fname, **kwargs):
+#     """Load MOT challenge data.
+#
+#     Params
+#     ------
+#     fname : str
+#         Filename to load data from
+#
+#     Kwargs
+#     ------
+#     sep : str
+#         Allowed field separators, defaults to '\s+|\t+|,'
+#     min_confidence : float
+#         Rows with confidence less than this threshold are removed.
+#         Defaults to -1. You should set this to 1 when loading
+#         ground truth MOTChallenge data, so that invalid rectangles in
+#         the ground truth are not considered during matching.
+#
+#     Returns
+#     ------
+#     df : pandas.DataFrame
+#         The returned dataframe has the following columns
+#             'X', 'Y', 'Width', 'Height', 'Confidence', 'ClassId', 'Visibility'
+#         The dataframe is indexed by ('FrameId', 'Id')
+#     """
+#
+#     sep = kwargs.pop('sep', '\s+|\t+|,')
+#     min_confidence = kwargs.pop('min_confidence', -1)
+#     df = pd.read_csv(
+#         fname,
+#         sep=sep,
+#         index_col=[0, 1],
+#         skipinitialspace=True,
+#         header=None,
+#         names=['FrameId', 'Id', 'X', 'Y', 'Width', 'Height', 'Confidence', 'ClassId', 'Visibility', 'unused'],
+#         engine='python'
+#     )
+#
+#     # Account for matlab convention.
+#     df[['X', 'Y']] -= (1, 1)
+#
+#     # Removed trailing column
+#     del df['unused']
+#
+#     # Remove all rows without sufficient confidence
+#     return df[df['Confidence'] >= min_confidence]
+
 def load_vatictxt(fname, **kwargs):
     """Load Vatic text format.
 

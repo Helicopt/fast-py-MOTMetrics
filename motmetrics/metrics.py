@@ -777,7 +777,7 @@ motplus_metrics = [
     'precision', 
     'num_unique_objects', 
     'mostly_tracked', 
-    'partially_tracked', 
+    #'partially_tracked',
     'mostly_lost', 
     'num_false_positives', 
     'num_misses',
