@@ -128,19 +128,6 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     analysis = {'hyp':{}, 'obj':{}}
     m_plus = {(d+k):0 for d in list('YN') for k in ['Match', 'Track', 'FP', 'FN']}
     m_plus['Filter'] = 0
-    def IoU_(xx, yy):
-        x1, y1, w1, h1 = xx
-        x2, y2, w2, h2 = yy
-        mx1 = max(x1, x2)
-        my1 = max(y1, y2)
-        mx2 = min(x1+w1, x2+w2)
-        my2 = min(y1+h1, y2+h2)
-        ix = max(mx2 - mx1, 0.)
-        iy = max(my2 - my1, 0.)
-        intersec = ix * iy
-        iou = intersec / (w1*h1+w2*h2-intersec)
-        return iou
-    IoU = lambda x, y: IoU_(x[:4], y[:4])
     for fid in allframeids:
         #st = time.time()
         oids = np.empty(0)
@@ -172,44 +159,22 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
         #print(dt)
         #print(gt)
         if det is not None:
-            dgt = {i: False for i in oids}
-            dhy = {i: False for i in hids}
-            dids = {'det_gt': dgt, 'det_hyp': dhy}
+            dgt = {i: None for i in oids}
+            dhy = {i: None for i in hids}
             if fid in det.index:
-                dd = det.loc[fid]
+                dd = det.loc[fid].values
             else:
-                dd = None
+                dd = []
+            dids = {'det_gt': dgt, 'det_hyp': dhy, 'det': dd}
             if dd is not None:
                 if fid in gt.index:
                     fgt = gt.loc[fid]
-                else:
-                    fgt = None
+                    for oid in oids:
+                        dgt[oid] = fgt.loc[oid].values
                 if fid in dt.index:
                     fdt = dt.loc[fid]
-                else:
-                    fdt = None
-                for d in dd.values:
-                    mx_iou = 0.
-                    mx_id = None
-                    if mx_id is None and fdt is not None:
-                        for hid in hids:
-                            if dhy[hid]: continue
-                            _iou = IoU(d, fdt.loc[hid].values)
-                            if _iou>mx_iou and _iou>0.5:
-                                mx_id = dhy, hid
-                                mx_iou = _iou
-                    if mx_id is None and fgt is not None:
-                        for oid in oids:
-                            if dgt[oid]: continue
-                            _iou = IoU(d, fgt.loc[oid].values)
-                            if _iou>mx_iou and _iou>0.5:
-                                mx_id = dgt, oid
-                                mx_iou = _iou
-
-                    if mx_id is not None:
-                        mx_id[0][mx_id[1]] = True
-                    else:
-                        m_plus['Filter']+=1
+                    for hid in hids:
+                        dhy[hid] = fdt.loc[hid].values
                     #print(d)
                     #print(mx_id[1])
 

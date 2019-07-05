@@ -148,6 +148,7 @@ class MOTAccumulator(object):
         if metric_plus is not None:
             d_oids = metric_plus['det_gt']
             d_hids = metric_plus['det_hyp']
+            d_det = metric_plus['det']
             metric_plus['YMatch'] = 0
             metric_plus['NMatch'] = 0
             metric_plus['YTrack'] = 0
@@ -157,6 +158,10 @@ class MOTAccumulator(object):
             metric_plus['YFN'] = 0
             metric_plus['NFN'] = 0
             metric_plus['Filter'] = 0
+            issue_y = []
+            issue_n = []
+            issue_fn = []
+            issue_fp = []
 
         if frameid is None:
             assert self.auto_id, 'auto-id is not enabled'
@@ -204,12 +209,7 @@ class MOTAccumulator(object):
                     o = oids[i]
                     h = hids[j]
                     if metric_plus is not None:
-                        if d_hids[h] or d_oids[o]:
-                            metric_plus['YMatch'] += 1
-                            if d_hids[h] and d_oids[o]:
-                                metric_plus['Filter'] += 1
-                        else:
-                            metric_plus['YTrack'] += 1
+                        issue_y.append((o, h))
                     oids[i] = ma.masked
                     hids[j] = ma.masked
                     self.m[oids.data[i]] = hids.data[j]
@@ -238,20 +238,10 @@ class MOTAccumulator(object):
 
                 if cat1=='MATCH':
                     if metric_plus is not None:
-                        if d_hids[h] or d_oids[o]:
-                            metric_plus['YMatch'] += 1
-                            if d_hids[h] and d_oids[o]:
-                                metric_plus['Filter'] += 1
-                        else:
-                            metric_plus['YTrack'] += 1
+                        issue_y.append((o, h))
                 if cat1=='SWITCH':
                     if metric_plus is not None:
-                        if d_hids[h] or d_oids[o]:
-                            metric_plus['NMatch'] += 1
-                            if d_hids[h] and d_oids[o]:
-                                metric_plus['Filter'] += 1
-                        else:
-                            metric_plus['NTrack'] += 1
+                        issue_n.append((o, h))
                     if h not in self.hypHistory:
                         subcat = 'ASCEND'
                         self._indices.append((frameid, next(eid)))
@@ -286,10 +276,7 @@ class MOTAccumulator(object):
             self._indices.append((frameid, next(eid)))
             self._events.append(['MISS', o, np.nan, np.nan])
             if metric_plus is not None:
-                if d_oids[o]:
-                    metric_plus['YFN'] += 1
-                else:
-                    metric_plus['NFN'] += 1
+                issue_fn.append(o)
             if vf!='':
                 vf.write('FN %d %d\n'%(frameid, o))
 
@@ -298,10 +285,7 @@ class MOTAccumulator(object):
             self._indices.append((frameid, next(eid)))
             self._events.append(['FP', np.nan, h, np.nan])
             if metric_plus is not None:
-                if d_hids[h]:
-                    metric_plus['YFP'] += 1
-                else:
-                    metric_plus['NFP'] += 1
+                issue_fp.append(h)
             if vf!='':
                 vf.write('FP %d %d\n'%(frameid, h))
 
@@ -309,6 +293,85 @@ class MOTAccumulator(object):
         for o in oids.data:
             self.last_occurrence[o] = frameid
 
+        def IoU_(xx, yy):
+            x1, y1, w1, h1 = xx
+            x2, y2, w2, h2 = yy
+            mx1 = max(x1, x2)
+            my1 = max(y1, y2)
+            mx2 = min(x1+w1, x2+w2)
+            my2 = min(y1+h1, y2+h2)
+            ix = max(mx2 - mx1, 0.)
+            iy = max(my2 - my1, 0.)
+            intersec = ix * iy
+            iou = intersec / (w1*h1+w2*h2-intersec)
+            return iou
+        IoU = lambda x, y: IoU_(x[:4], y[:4])
+        if metric_plus is not None:
+            rest = []
+            for d in d_det:
+                mx_iou = 0.
+                mx_id = None
+                m_gt = None
+                for hid in issue_fp:
+                    if isinstance(d_hids[hid], bool): continue
+                    _iou = IoU(d, d_hids[hid])
+                    if _iou>mx_iou and _iou>0.5:
+                        mx_id = hid
+                        m_gt = None
+                        mx_iou = _iou
+                for oid, hid in issue_y + issue_n:
+                    if isinstance(d_hids[hid], bool): continue
+                    _iou = IoU(d, d_hids[hid])
+                    if _iou>mx_iou and _iou>0.5:
+                        mx_id = hid
+                        m_gt = oid
+                        mx_iou = _iou
+                if mx_id is not None:
+                    d_hids[mx_id] = True
+                    if m_gt is not None:
+                        d_oids[m_gt] = True
+                else:
+                    rest.append(d)
+            d_det = rest
+            for d in d_det:
+                mx_iou = 0.
+                mx_id = None
+                for oid in issue_fn:
+                    if isinstance(d_oids[oid], bool): continue
+                    _iou = IoU(d, d_oids[oid])
+                    if _iou>mx_iou and _iou>0.5:
+                        mx_id = oid
+                        mx_iou = _iou
+                for oid, hid in issue_y + issue_n:
+                    if isinstance(d_oids[oid], bool): continue
+                    _iou = IoU(d, d_oids[oid])
+                    if _iou>mx_iou and _iou>0.5:
+                        mx_id = oid
+                        mx_iou = _iou
+                if mx_id is not None:
+                    d_oids[mx_id] = True
+                else:
+                    metric_plus['Filter'] += 1
+            for h in issue_fp:
+                if d_hids[h] is True:
+                    metric_plus['YFP'] += 1
+                else:
+                    metric_plus['NFP'] += 1
+            for o in issue_fn:
+                if d_oids[o] is True:
+                    metric_plus['YFN'] += 1
+                else:
+                    metric_plus['NFN'] += 1
+            for o, h in issue_n:
+                if d_hids[h] is True or d_oids[o] is True:
+                    metric_plus['NMatch'] += 1
+                else:
+                    metric_plus['NTrack'] += 1
+            for o, h in issue_y:
+                if d_hids[h] is True or d_oids[o] is True:
+                    metric_plus['YMatch'] += 1
+                else:
+                    metric_plus['YTrack'] += 1
         return frameid
 
     @property
