@@ -124,7 +124,9 @@ def preprocessResult_det(res, gt, inifile, label):
                 todrop.append((t, hid[j]))
         #en = time.time()
         #print('Frame %d: '%t, en - st)
-    if not len(todrop)==0:
+    if len(todrop)>0:
         ret = res.drop(labels=todrop)
+    else:
+        ret = res
     logging.info('Preprocess take %.3f seconds and remove %d boxes.'%(time.time() - st, len(todrop)))
     return ret
