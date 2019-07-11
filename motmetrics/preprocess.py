@@ -66,7 +66,8 @@ def preprocessResult(res, gt, inifile):
 
 def preprocessResult_det(res, gt, inifile, label):
     a = res.reset_index(level=1).reset_index(level=0)
-    a['Id'] = range(len(res))
+    if len(res):
+        a['Id'] = range(len(res))
     if label=='P':
         class_num = 221488
     elif label=='A':
