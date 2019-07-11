@@ -79,6 +79,8 @@ def preprocessResult_det(res, gt, inifile, label):
     if label is not None:
         tmp = a[a['ClassId'] == class_num]
         res = tmp.set_index(['FrameId', 'Id'])
+    else:
+        res = a.set_index(['FrameId', 'Id'])
     st = time.time()
     labels = ['ped',           # 1
     'person_on_vhcl',    # 2
