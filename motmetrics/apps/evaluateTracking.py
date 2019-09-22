@@ -64,6 +64,7 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('--label', type=str, default=None, help='class label for drop detection results')
     parser.add_argument('--block', type=int, default=1, help='block frames n means choosing first frame as key frame for every n frames')
     parser.add_argument('--iou', type=float, default=0.5, help='special IoU threshold requirement for small targets')
+    parser.add_argument('-k', default=False, action='store_true', help='Use K-Score metrics')
     return parser.parse_args()
 
 def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None, label=None):
@@ -177,7 +178,10 @@ if __name__ == '__main__':
     logging.info('Running metrics')
     
     if args.detections is None:
-        summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
+        if args.k:
+            summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motk_metrics, generate_overall=True)
+        else:
+            summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
         print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
     else:
         summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motplus_metrics, generate_overall=True)

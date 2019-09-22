@@ -473,6 +473,32 @@ def recall(df, num_detections, num_objects):
 def recall_m(partials, num_detections, num_objects):
     return num_detections / max(num_objects, 1)
 
+def id_local_assignment(df, ana = None):
+    oids = df.full['OId'].dropna().unique()
+    hids = df.full['HId'].dropna().unique()
+    if ana is None:
+        hcs = [(h, len(df.raw[(df.raw.HId==h)].groupby(level=0))) for h in hids]
+        ocs = [(o, len(df.raw[(df.raw.OId==o)].groupby(level=0))) for o in oids]
+    else:
+        hcs = [(h, ana['hyp'][int(h)]) for h in hids if h!='nan' and np.isfinite(float(h))]
+        ocs = [(o, ana['obj'][int(o)]) for o in oids if o!='nan' and np.isfinite(float(o))]
+    IoUs = {}
+    ret = {
+            'oids': ocs,
+            'candidates': IoUs,
+            'hid_lens': {h: hlen for h, hlen in hcs}
+          }
+    df = df.raw.reset_index()    
+    df = df.set_index(['OId','HId']) 
+    df = df.sort_index(level=[0,1])
+    for r, o in enumerate(oids):
+        df_o = df.loc[o, 'D'].dropna()
+        tmp = []
+        IoUs[o] = tmp
+        for h, ex in df_o.groupby(level=0).count().iteritems():
+            tmp.append((h, ex))
+    return ret
+
 def id_global_assignment(df, ana = None):
     """ID measures: Global min-cost assignment for ID measures."""
     #st1 = time.time()
@@ -572,6 +598,29 @@ def idf1(df, idtp, num_objects, num_predictions):
 
 def idf1_m(partials, idtp, num_objects, num_predictions):
     return 2 * idtp / max(num_objects + num_predictions, 1)
+
+def idk(df, num_objects, id_local_assignment):
+    """ID measures: local K score"""
+    k = 2.
+    ret = 0.
+    for oid, olen in id_local_assignment['oids']:
+        tmp = 0.
+        for hid, ilen in id_local_assignment['candidates'][oid]:
+            if ilen==0: continue
+            hlen = id_local_assignment['hid_lens'][hid]
+            if olen + hlen - ilen > 1:
+                tmp += ( (ilen - 1) / (olen + hlen - ilen - 1)) ** k
+            else:
+                tmp += 1
+        tmp = tmp ** (1./k)
+        ret += tmp * olen / max(num_objects, 1)
+    return ret
+
+def idk_m(partials, num_objects):
+    res = 0
+    for v in partials:
+        res += v['idk'] * v['num_objects']
+    return res / max(num_objects, 1)
 
 def YMatch(df, ana = None):
     return ana['metric_plus']['YMatch']
@@ -731,6 +780,7 @@ def create():
     m.register(recall, formatter='{:.1%}'.format)
 
     m.register(id_global_assignment)
+    m.register(id_local_assignment)
     m.register(idfp)
     m.register(idfn)
     m.register(idtp)
@@ -760,6 +810,8 @@ def create():
     # m.register(siou_sum, formatter='{:.3f}'.format)
     # m.register(avg_iou, formatter='{:.3f}'.format)
     # m.register(switch_iou, formatter='{:.3f}'.format)
+
+    m.register(idk, formatter='{:.1%}'.format)
     return m
 
 motchallenge_metrics = [
@@ -778,6 +830,27 @@ motchallenge_metrics = [
     'num_fragmentations',
     'mota',
     'motp',
+    'num_transfer',
+    'num_ascend',
+    'num_migrate',
+    # 'avg_iou',
+    # 'switch_iou',
+]
+"""A list of all metrics from MOTChallenge."""
+
+motk_metrics = [
+    'idk',
+    'idf1',
+    'recall', 
+    'precision', 
+    'num_unique_objects', 
+    'mostly_tracked', 
+    'partially_tracked', 
+    'mostly_lost', 
+    'num_false_positives', 
+    'num_misses',
+    'num_switches',
+    'mota',
     'num_transfer',
     'num_ascend',
     'num_migrate',
