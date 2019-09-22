@@ -180,9 +180,10 @@ if __name__ == '__main__':
     if args.detections is None:
         if args.k:
             summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motk_metrics, generate_overall=True)
+            print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motk_metric_names))
         else:
             summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
-        print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+            print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
     else:
         summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motplus_metrics, generate_overall=True)
         print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motplus_metric_names))
