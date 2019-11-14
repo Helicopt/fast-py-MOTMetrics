@@ -7,7 +7,7 @@ import os
 
 DATA_DIR = os.path.join(os.path.dirname(__file__), '../data')
 
-main_metrics = ['mota', 'idf1', 'num_switches', 'idk']
+main_metrics = ['mota', 'idf1', 'num_switches', 'idkf']
 
 def test_kscore_1():
     acc = mm.MOTAccumulator()
@@ -16,12 +16,14 @@ def test_kscore_1():
         acc.update([1], ['a' if fr!=5 else 'b'], [0.5], frameid=fr)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.8)
     assert metr['idf1'] == approx(0.9)
     assert metr['num_switches'] == approx(2)
-    assert metr['idk'] == approx( ((8./9)**2 + 0**2)**0.5 )
+    assert metr['idkr'] == approx( ((9./10)**2 + (1./10)**2)**0.5 )
+    assert metr['idkp'] == approx( 9./10 * 9/10. + 1./10 * 1/10. )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#1: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_2():
@@ -31,12 +33,14 @@ def test_kscore_2():
         acc.update([1], ['a' if fr<4 else ('b' if fr<7 else 'c') ], [0.5], frameid=fr)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.8)
     assert metr['idf1'] == approx(0.4)
     assert metr['num_switches'] == approx(2)
-    assert metr['idk'] == approx( ((3./9)**2 + (2./9)**2 + (2./9)**2)**0.5 )
+    assert metr['idkr'] == approx( ((4./10)**2 + (3./10)**2 + (3./10)**2)**0.5 )
+    assert metr['idkp'] == approx( 4./10*4./10 + 3./10*3./10. + 3./10*3./10 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#2: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_3():
@@ -46,12 +50,14 @@ def test_kscore_3():
         acc.update([1], ['a' if fr<4 else chr(97+fr-3)], [0.5], frameid=fr)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.4)
     assert metr['idf1'] == approx(0.4)
     assert metr['num_switches'] == approx(6)
-    assert metr['idk'] == approx( ((3./9)**2 + 6* 0**2)**0.5 )
+    assert metr['idkr'] == approx( ((4./10)**2 + 6* (1./10)**2)**0.5 )
+    assert metr['idkp'] == approx( 4./10.*4./10 + 1./10*1./10 * 6 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#3: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_4():
@@ -61,12 +67,14 @@ def test_kscore_4():
         acc.update([1], [chr(97+fr)], [0.5], frameid=fr)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.1)
     assert metr['idf1'] == approx(0.1)
     assert metr['num_switches'] == approx(9)
-    assert metr['idk'] == approx( (10* 0**2)**0.5 )
+    assert metr['idkr'] == approx( (10* (1./10.)**2)**0.5 )
+    assert metr['idkp'] == approx( 1./10.*1./10 *10. )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#4: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_5():
@@ -76,12 +84,14 @@ def test_kscore_5():
         acc.update([1], ['a'], [0.5], frameid=fr)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(1)
     assert metr['idf1'] == approx(1)
     assert metr['num_switches'] == approx(0)
-    assert metr['idk'] == approx( (1**2)**0.5 )
+    assert metr['idkr'] == approx( (1**2)**0.5 )
+    assert metr['idkp'] == approx( 1. )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#5: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_6():
@@ -99,12 +109,14 @@ def test_kscore_6():
     acc.update([1], [], [], frameid=9)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.5)
     assert metr['idf1'] == approx(0.625)
     assert metr['num_switches'] == approx(1)
-    assert metr['idk'] == approx( ((4./9)**2)**0.5 )
+    assert metr['idkr'] == approx( ((5./10)**2 + (1./10)**2)**0.5 )
+    assert metr['idkp'] == approx( 5./10.*5./6 + 1./10.*1./6 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#6: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_7():
@@ -122,12 +134,14 @@ def test_kscore_7():
     acc.update([1], [], [], frameid=9)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
 
     assert metr['mota'] == approx(0.3)
     assert metr['idf1'] == approx(0.428571428571428)
     assert metr['num_switches'] == approx(1)
-    assert metr['idk'] == approx( ((2./9)**2)**0.5 )
+    assert metr['idkr'] == approx( ((3./10)**2 + (1./10)**2)**0.5 )
+    assert metr['idkp'] == approx( 3./10*3./4 + 1./10*1./4 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#7: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_8():
@@ -144,11 +158,13 @@ def test_kscore_8():
     acc.update([2], ['c'], [0.5], frameid=8)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
     assert metr['mota'] == approx(0.875)
     assert metr['idf1'] == approx(0.625)
     assert metr['num_switches'] == approx(2)
-    assert metr['idk'] == approx( ((2./6)**2+(3/9.)**2)**0.5 * 7/16. + ((2/12.)**2 + (5/8.)**2)**0.5 * 9/16. )
+    assert metr['idkr'] == approx( ((3./7)**2+(4./10)**2)**0.5 * 7/16. + ((3./13)**2 + (6/9.)**2)**0.5 * 9/16. )
+    assert metr['idkp'] == approx( (3./7) * 3./16 + (6./9) * 6/16. + ((3./13)**2 + (4./10.)**2)**0.5 * 7./16 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#8: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_9():
@@ -165,11 +181,13 @@ def test_kscore_9():
     acc.update([2], ['c'], [0.5], frameid=8)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
     assert metr['mota'] == approx(0.875)
     assert metr['idf1'] == approx(0.625)
     assert metr['num_switches'] == approx(2)
-    assert metr['idk'] == approx( ((2./6)**2+(3/6.)**2)**0.5 * 7/16. + ((2/8.)**2 + (5/8.)**2)**0.5 * 9/16. )
+    assert metr['idkr'] == approx( ((3./7)**2+(4./7)**2)**0.5 * 7/16. + ((3./9)**2 + (6/9.)**2)**0.5 * 9/16. )
+    assert metr['idkp'] == approx( (3./7) * 3./16 + (6./9) * 6/16. + (4./7) * 4./16 + (3./9) * 3./16 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#9: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_10():
@@ -186,12 +204,14 @@ def test_kscore_10():
     acc.update([], ['c'], [], frameid=8)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
     assert metr['mota'] == approx(0.8)
     assert metr['idf1'] == approx(0.580645161)
     assert metr['num_switches'] == approx(2)
     assert metr['num_false_positives'] == approx(1)
-    assert metr['idk'] == approx( ((2./6)**2+(3/6.)**2)**0.5 * 7/15. + ((2/7.)**2 + (4/8.)**2)**0.5 * 8/15. )
+    assert metr['idkr'] == approx( ((3./7)**2+(4/7.)**2)**0.5 * 7/15. + ((3/8.)**2 + (5/9.)**2)**0.5 * 8/15. )
+    assert metr['idkp'] == approx( (3./7) * 3./16 + (5./9) * 6/16. + (4./7) * 4./16 + (3./8) * 3./16 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#10: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_11():
@@ -206,11 +226,13 @@ def test_kscore_11():
     acc.update([1,2], ['a'], [[np.nan],[0.]], frameid=6)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
     assert metr['mota'] == approx(0.5)
     assert metr['idf1'] == approx(0.380952380952)
     assert metr['num_switches'] == approx(0)
-    assert metr['idk'] == approx( ((3./9)**2)**0.5 * 7/14. + ((2/10)**2)**0.5 * 7/14. )
+    assert metr['idkr'] == approx( ((4./10)**2)**0.5 * 7/14. + ((3/11.)**2)**0.5 * 7/14. )
+    assert metr['idkp'] == approx( ((4./10)**2 + (3./11.)**2)**0.5 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#11: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
     
 def test_kscore_12():
@@ -227,11 +249,13 @@ def test_kscore_12():
     acc.update([2], ['a'], [0.], frameid=8)
     
     mh = mm.metrics.create()
-    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idk'], return_dataframe=False, return_cached=True)
+    metr = mh.compute(acc, metrics=['mota', 'idf1', 'num_switches', 'idkf'], return_dataframe=False, return_cached=True)
     assert metr['mota'] == approx(1)
     assert metr['idf1'] == approx(0.55555555555)
     assert metr['num_switches'] == approx(0)
-    assert metr['idk'] == approx( ((4./8)**2)**0.5 * 5/9. + ((3./8)**2)**0.5 * 4/9. )
+    assert metr['idkr'] == approx( (5./9) * 5./9 + (4./9.)*4./9 )
+    assert metr['idkp'] == approx( ((5./9)**2 + (4./9.)**2)**0.5 )
+    assert metr['idkf'] == approx( metr['idkr'] * metr['idkp'] * 2 / (metr['idkr'] + metr['idkp']) )
     print('\nCase#12: '+''.join(['%s: %.4f, '%(k, metr[k]) for k in main_metrics]))
 
 def test_ids():

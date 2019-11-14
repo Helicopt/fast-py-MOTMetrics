@@ -482,21 +482,35 @@ def id_local_assignment(df, ana = None):
     else:
         hcs = [(h, ana['hyp'][int(h)]) for h in hids if h!='nan' and np.isfinite(float(h))]
         ocs = [(o, ana['obj'][int(o)]) for o in oids if o!='nan' and np.isfinite(float(o))]
-    IoUs = {}
+    IoUs_h = {}
+    IoUs_o = {}
     ret = {
             'oids': ocs,
-            'candidates': IoUs,
-            'hid_lens': {h: hlen for h, hlen in hcs}
+            'hids': hcs,
+            'candidates_h': IoUs_h,
+            'candidates_o': IoUs_o,
+            'hid_lens': {h: hlen for h, hlen in hcs},
+            'oid_lens': {o: olen for o, olen in ocs}
           }
-    df = df.raw.reset_index()    
-    df = df.set_index(['OId','HId']) 
+    df_ = df
+    df = df_.raw.reset_index()
+    df = df.set_index(['OId','HId'])
     df = df.sort_index(level=[0,1])
     for r, o in enumerate(oids):
         df_o = df.loc[o, 'D'].dropna()
         tmp = []
-        IoUs[o] = tmp
+        IoUs_h[o] = tmp
         for h, ex in df_o.groupby(level=0).count().iteritems():
             tmp.append((h, ex))
+    df = df_.raw.reset_index()
+    df = df.set_index(['HId','OId'])
+    df = df.sort_index(level=[0,1])
+    for r, h in enumerate(hids):
+        df_h = df.loc[h, 'D'].dropna()
+        tmp = []
+        IoUs_o[h] = tmp
+        for o, ex in df_h.groupby(level=0).count().iteritems():
+            tmp.append((o, ex))
     return ret
 
 def id_global_assignment(df, ana = None):
@@ -599,28 +613,57 @@ def idf1(df, idtp, num_objects, num_predictions):
 def idf1_m(partials, idtp, num_objects, num_predictions):
     return 2 * idtp / max(num_objects + num_predictions, 1)
 
-def idk(df, num_objects, id_local_assignment):
-    """ID measures: local K score"""
+def idkr(df, num_objects, id_local_assignment):
+    """ID measures: local K recall"""
     k = 2.
     ret = 0.
     for oid, olen in id_local_assignment['oids']:
         tmp = 0.
-        for hid, ilen in id_local_assignment['candidates'][oid]:
+        for hid, ilen in id_local_assignment['candidates_h'][oid]:
             if ilen==0: continue
             hlen = id_local_assignment['hid_lens'][hid]
-            if olen + hlen - ilen > 1:
-                tmp += ( (ilen - 1) / (olen + hlen - ilen - 1)) ** k
+            if olen + hlen - ilen > 0:
+                tmp += ( (ilen) / (olen + hlen - ilen)) ** k
             else:
                 tmp += 1
         tmp = tmp ** (1./k)
         ret += tmp * olen / max(num_objects, 1)
     return ret
 
-def idk_m(partials, num_objects):
+def idkr_m(partials, num_objects):
     res = 0
     for v in partials:
-        res += v['idk'] * v['num_objects']
+        res += v['idkr'] * v['num_objects']
     return res / max(num_objects, 1)
+
+def idkp(df, num_predictions, id_local_assignment):
+    """ID measures: local K score"""
+    k = 2.
+    ret = 0.
+    for oid, olen in id_local_assignment['hids']:
+        tmp = 0.
+        for hid, ilen in id_local_assignment['candidates_o'][oid]:
+            if ilen==0: continue
+            hlen = id_local_assignment['oid_lens'][hid]
+            if olen + hlen - ilen > 0:
+                tmp += ( (ilen) / (olen + hlen - ilen)) ** k
+            else:
+                tmp += 1
+        tmp = tmp ** (1./k)
+        ret += tmp * olen / max(num_predictions, 1)
+    return ret
+
+def idkp_m(partials, num_predictions):
+    res = 0
+    for v in partials:
+        res += v['idkp'] * v['num_predicitons']
+    return res / max(num_predictions, 1)
+
+def idkf(df, idkr, idkp):
+    return 2 * idkr * idkp / (idkr + idkp)
+
+def idkf_m(partials, idkr, idkp):
+    return 2 * idkr * idkp / (idkr + idkp)
 
 def YMatch(df, ana = None):
     return ana['metric_plus']['YMatch']
@@ -811,7 +854,9 @@ def create():
     # m.register(avg_iou, formatter='{:.3f}'.format)
     # m.register(switch_iou, formatter='{:.3f}'.format)
 
-    m.register(idk, formatter='{:.1%}'.format)
+    m.register(idkf, formatter='{:.1%}'.format)
+    m.register(idkr, formatter='{:.1%}'.format)
+    m.register(idkp, formatter='{:.1%}'.format)
     return m
 
 motchallenge_metrics = [
@@ -839,7 +884,9 @@ motchallenge_metrics = [
 """A list of all metrics from MOTChallenge."""
 
 motk_metrics = [
-    'idk',
+    'idkf',
+    'idkr',
+    'idkp',
     'idf1',
     'recall', 
     'precision', 

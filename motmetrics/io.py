@@ -283,7 +283,9 @@ motchallenge_metric_names = {
 """A list mappings for metric names to comply with MOTChallenge."""
 
 motk_metric_names = {
-    'idk' : 'IDK',
+    'idkf' : 'IDKF',
+    'idkr' : 'IDKR',
+    'idkp' : 'IDKP',
     'idf1' : 'IDF1',
     'recall' : 'Rcll', 
     'precision' : 'Prcn',
