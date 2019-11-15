@@ -656,7 +656,7 @@ def idkp(df, num_predictions, id_local_assignment):
 def idkp_m(partials, num_predictions):
     res = 0
     for v in partials:
-        res += v['idkp'] * v['num_predicitons']
+        res += v['idkp'] * v['num_predictions']
     return res / max(num_predictions, 1)
 
 def idkf(df, idkr, idkp):
