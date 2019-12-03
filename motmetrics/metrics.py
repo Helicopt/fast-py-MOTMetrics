@@ -875,60 +875,37 @@ motchallenge_metrics = [
     'num_fragmentations',
     'mota',
     'motp',
-    'num_transfer',
-    'num_ascend',
-    'num_migrate',
-    # 'avg_iou',
-    # 'switch_iou',
 ]
 """A list of all metrics from MOTChallenge."""
 
-motk_metrics = [
+motchallenge_metrics_brief = [
+    'idf1',
+    'idp',
+    'idr',
+    'recall', 
+    'precision', 
+    'num_false_positives', 
+    'num_misses',
+    'num_switches',
+    'mota',
+]
+"""A brief list of metrics from MOTChallenge."""
+
+samot_metrics = [
     'idkf',
     'idkr',
     'idkp',
-    'idf1',
-    'recall', 
-    'precision', 
-    'num_unique_objects', 
-    'mostly_tracked', 
-    'partially_tracked', 
-    'mostly_lost', 
-    'num_false_positives', 
-    'num_misses',
-    'num_switches',
-    'mota',
+]
+
+extended_metrics = [
     'num_transfer',
     'num_ascend',
     'num_migrate',
     # 'avg_iou',
     # 'switch_iou',
 ]
-"""A list of all metrics from MOTChallenge."""
 
-motplus_metrics = [
-    'idf1',
-    'recall', 
-    'precision', 
-    #'num_unique_objects', 
-    #'mostly_tracked', 
-    #'partially_tracked',
-    #'mostly_lost', 
-    'num_false_positives', 
-    'num_misses',
-    'num_switches',
-    'mota',
-    'motp',
-    'num_transfer',
-    'YMatch',
-    'NMatch',
-    'YTrack',
-    'NTrack',
-    'YFP',
-    'NFP',
-    'YFN',
-    'NFN',
-    'Filter',
+det_metrics = [
     'association_precision',
     'association_recall',
     'tracking_precision',
@@ -937,8 +914,22 @@ motplus_metrics = [
     'detection_recall',
     'tracker_precision',
     'tracker_recall',
-    'tracker_accuracy',
-    # 'avg_iou',
-    # 'switch_iou',
 ]
-"""A list of all metrics from MOTChallenge."""
+
+
+def config_metrics(extended = True, samot = True, IDF = False, det = False, brief = True):
+    if brief:
+        ret = motchallenge_metrics_brief[:]
+    else:
+        ret = motchallenge_metrics[:]
+    if not IDF:
+        ret = ret[3:]
+    if samot:
+        ret = samot_metrics + ret
+    if extended:
+        ret += extended_metrics
+    if det:
+        ret += det_metrics
+    return ret
+
+

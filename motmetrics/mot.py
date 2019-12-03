@@ -100,7 +100,7 @@ class MOTAccumulator(object):
         self.dirty_events = True
         self.cached_events_df = None
 
-    def update(self, oids, hids, dists, frameid=None, vf='', metric_plus = None):
+    def update(self, oids, hids, dists, frameid=None, log='', metric_plus = None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -128,7 +128,7 @@ class MOTAccumulator(object):
         frameId : id
             Unique frame id. Optional when MOTAccumulator.auto_id is specified during
             construction.
-        vf: file to log details
+        log: file to log details
         Returns
         -------
         frame_events : pd.DataFrame
@@ -257,11 +257,11 @@ class MOTAccumulator(object):
                         self._events.append([subcat, oids.data[i], hids.data[j], dists[i, j]])
                     self._indices.append((frameid, next(eid)))
                     self._events.append([cat2, oids.data[i], hids.data[j], dists[i, j]])
-                if vf!='' and (cat1!='MATCH' or cat2!='MATCH'):
+                if log!='' and (cat1!='MATCH' or cat2!='MATCH'):
                     if cat1=='SWITCH':
-                        vf.write('%s %d %d %d %d %d\n'%(cat1[:2], o, self.last_match[o], self.m[o], frameid, h))
+                        log.write('%s %d %d %d %d %d\n'%(cat1[:2], o, self.last_match[o], self.m[o], frameid, h))
                     if cat2=='TRANSFER':
-                        vf.write('%s %d %d %d %d %d\n'%(cat2[:2], h, self.hypHistory[h], self.res_m[h], frameid, o))
+                        log.write('%s %d %d %d %d %d\n'%(cat2[:2], h, self.hypHistory[h], self.res_m[h], frameid, o))
                 self.hypHistory[h] = frameid
                 self.last_match[o] = frameid
                 self._indices.append((frameid, next(eid)))
@@ -277,8 +277,8 @@ class MOTAccumulator(object):
             self._events.append(['MISS', o, np.nan, np.nan])
             if metric_plus is not None:
                 issue_fn.append(o)
-            if vf!='':
-                vf.write('FN %d %d\n'%(frameid, o))
+            if log!='':
+                log.write('FN %d %d\n'%(frameid, o))
 
         # 4. All remaining hypotheses are false alarms
         for h in hids[~hids.mask]:
@@ -286,8 +286,8 @@ class MOTAccumulator(object):
             self._events.append(['FP', np.nan, h, np.nan])
             if metric_plus is not None:
                 issue_fp.append(h)
-            if vf!='':
-                vf.write('FP %d %d\n'%(frameid, h))
+            if log!='':
+                log.write('FP %d %d\n'%(frameid, h))
 
         # 5. Update occurance state
         for o in oids.data:

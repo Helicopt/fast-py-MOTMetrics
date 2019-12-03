@@ -33,9 +33,12 @@ def preprocessResult(res, gt, inifile):
     distractors = {i+1 : x in distractors_ for i,x in enumerate(labels)}
     for i in distractors_:
         distractors[i] = 1
-    seqIni = ConfigParser()
-    seqIni.read(inifile, encoding='utf8')
-    F = int(seqIni['Sequence']['seqLength'])
+    try:
+        seqIni = ConfigParser()
+        seqIni.read(inifile, encoding='utf8')
+        F = int(seqIni['Sequence']['seqLength'])
+    except:
+        return res
     todrop = []
     for t in range(1,F+1):
         if t not in res.index or t not in gt.index: continue
@@ -100,9 +103,12 @@ def preprocessResult_det(res, gt, inifile, label):
     distractors = {i+1 : x in distractors_ for i,x in enumerate(labels)}
     for i in distractors_:
         distractors[i] = 1
-    seqIni = ConfigParser()
-    seqIni.read(inifile, encoding='utf8')
-    F = int(seqIni['Sequence']['seqLength'])
+    try:
+        seqIni = ConfigParser()
+        seqIni.read(inifile, encoding='utf8')
+        F = int(seqIni['Sequence']['seqLength'])
+    except:
+        return res
     todrop = []
     for t in range(1,F+1):
         if t not in res.index or t not in gt.index: continue

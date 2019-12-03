@@ -2,7 +2,7 @@
 
 TOKA, 2018
 ORIGIN: https://github.com/cheind/py-motmetrics
-EXTENDED: <reposity>
+EXTENDED: https://github.com/Helicopt/fast-py-MOTMetrics
 """
 
 import argparse
@@ -10,7 +10,6 @@ import glob
 import os
 import logging
 import motmetrics as mm
-import pandas as pd
 from collections import OrderedDict
 from pathlib import Path
 import time
@@ -57,28 +56,32 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('seqmap', type=str, help='Text file containing all sequences name')
     parser.add_argument('-d', '--detections', type=str, default=None, help='Text file containing detection files')
     parser.add_argument('--log', type=str, help='a place to record result and outputfile of mistakes', default='')
+    # parser.add_argument('--logfile', type=str, help='a file to record output', default='')
     parser.add_argument('--loglevel', type=str, help='Log level', default='info')
-    parser.add_argument('--fmt', type=str, help='Data format', default='mot15-2D')
+    parser.add_argument('--fmt', type=str, help='Data format (mot15-2d for MOT15-2D, mot16 for MOT16/17/19)', default='mot16', choices = ['mot16', 'mot15-2d'])
     parser.add_argument('--solver', type=str, help='LAP solver to use')
-    parser.add_argument('--skip', type=int, default=0, help='skip frames n means choosing one frame for every (n+1) frames')
+    parser.add_argument('--skip', type=int, default=0, help='skip frames n means choosing first frame for every (n+1) frames')
     parser.add_argument('--label', type=str, default=None, help='class label for drop detection results')
     parser.add_argument('--block', type=int, default=1, help='block frames n means choosing first frame as key frame for every n frames')
     parser.add_argument('--iou', type=float, default=0.5, help='special IoU threshold requirement for small targets')
-    parser.add_argument('-k', default=False, action='store_true', help='Use K-Score metrics')
+    parser.add_argument('-s', default=True, action='store_false', help='Exclude samot metrics')
+    parser.add_argument('-e', default=True, action='store_false', help='Exclude extended metrics')
+    parser.add_argument('-i', default=True, action='store_false', help='Exclude idf1')
+    parser.add_argument('-b', '--brief', default=False, action='store_true', help='Brief metric')
     return parser.parse_args()
 
-def compare_dataframes(gts, ts, vsflag = '', iou = 0.5, det = None, label=None):
+def compare_dataframes(gts, ts, log = '', iou = 0.5, det = None, label=None, fmt = 'mot16'):
     accs = []
     anas = []
     names = []
     for k, tsacc in ts.items():
         if k in gts:            
             logging.info('Evaluating {}...'.format(k))
-            if vsflag!='':
-                fd = open(vsflag+'/'+k+'.log','w')
+            if log!='':
+                fd = open(log+'/'+k+'.log','w')
             else:
                 fd = ''
-            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, vflag=fd, det = None if det is None else det[k], label=label)
+            acc, ana = mm.utils.CLEAR_MOT_M(gts[k][0], tsacc, gts[k][1], 'iou', distth=iou, log=fd, det = None if det is None else det[k], label=label, fmt=fmt)
             if fd!='':
                 fd.close()
             accs.append(acc)
@@ -120,7 +123,7 @@ def generateSkippedGT(gtfile, skip, fmt, block = 1):
     return tempfile
 
 
-if __name__ == '__main__':
+def main():
 
     args = parse_args()
 
@@ -152,7 +155,7 @@ if __name__ == '__main__':
     logging.info('Default LAP solver \'{}\''.format(mm.lap.default_solver))
     logging.info('Loading files.')
 
-    if args.skip>0 and 'mot' in args.fmt:
+    if args.skip>0:
         for i, gtfile in enumerate(gtfiles):
             gtfiles[i] = generateSkippedGT(gtfile, args.skip, fmt=args.fmt)
     
@@ -172,19 +175,25 @@ if __name__ == '__main__':
 
     mh = mm.metrics.create()
     st = time.time()
-    accs, analysis, names = compare_dataframes(gt, ts, args.log, 1.-args.iou, det = ds, label=args.label)
+    accs, analysis, names = compare_dataframes(gt, ts, log = args.log, iou = 1.-args.iou, det = ds, label=args.label, fmt = args.fmt)
     logging.info('adding frames: %.3f seconds.'%(time.time()-st))
     
     logging.info('Running metrics')
-    
-    if args.detections is None:
-        if args.k:
-            summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motk_metrics, generate_overall=True)
-            print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motk_metric_names))
-        else:
-            summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
-            print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
-    else:
-        summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motplus_metrics, generate_overall=True)
-        print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motplus_metric_names))
+
+
+    metric_to_calculate = mm.metrics.config_metrics(extended = args.e, samot = args.s, IDF = args.i, det = args.detections is not None, brief = args.brief)
+    metric_names = mm.io.config_metric_names(metric_to_calculate)
+    # if args.detections is None:
+    #     if args.k:
+    #         summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motk_metrics, generate_overall=True)
+    #         print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motk_metric_names))
+    #     else:
+    #         summary = mh.compute_many(accs, anas = analysis, names=names, metrics=mm.metrics.motchallenge_metrics, generate_overall=True)
+    #         print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=mm.io.motchallenge_metric_names))
+    # else:
+    summary = mh.compute_many(accs, anas = analysis, names=names, metrics=metric_to_calculate, generate_overall=True)
+    print(mm.io.render_summary(summary, formatters=mh.formatters, namemap=metric_names))
     logging.info('Completed')
+
+if __name__ == '__main__':
+    main()

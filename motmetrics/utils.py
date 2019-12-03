@@ -74,7 +74,7 @@ def compare_to_groundtruth(gt, dt, dist='iou', distfields=['X', 'Y', 'Width', 'H
     
     return acc
 
-def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, vflag = '', det = None, label=None):
+def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Height'], distth=0.5, include_all = False, log = '', det = None, label=None, fmt = 'mot16'):
     """Compare groundtruth and detector results.
 
     This method assumes both results are given in terms of DataFrames with at least the following fields
@@ -112,15 +112,16 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     #import time
     #print('preprocess start.')
     #pst = time.time()
-    dt = preprocessResult(dt, gt, inifile)
-    if det is not None:
-        det = preprocessResult_det(det, gt, inifile, label)
+    if fmt=='mot16':
+        dt = preprocessResult(dt, gt, inifile)
+        if det is not None:
+            det = preprocessResult_det(det, gt, inifile, label)
     #pen = time.time()
     #print('preprocess take ', pen - pst)
-    if include_all:
-        gt = gt[gt['Confidence'] >= 0.99]
-    else:
-        gt = gt[ (gt['Confidence'] >= 0.99) & (gt['ClassId'] == 1) ]
+        if include_all:
+            gt = gt[gt['Confidence'] >= 0.99]
+        else:
+            gt = gt[ (gt['Confidence'] >= 0.99) & (gt['ClassId'] == 1) ]
     # We need to account for all frames reported either by ground truth or
     # detector. In case a frame is missing in GT this will lead to FPs, in 
     # case a frame is missing in detector results this will lead to FNs.
@@ -178,7 +179,7 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
                     #print(d)
                     #print(mx_id[1])
 
-        acc.update(oids, hids, dists, frameid=fid, vf = vflag, metric_plus = dids)
+        acc.update(oids, hids, dists, frameid=fid, log = log, metric_plus = dids)
         if dids:
             for k in m_plus:
                 m_plus[k]+=dids[k]

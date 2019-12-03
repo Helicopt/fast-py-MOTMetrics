@@ -282,43 +282,10 @@ motchallenge_metric_names = {
 }
 """A list mappings for metric names to comply with MOTChallenge."""
 
-motk_metric_names = {
-    'idkf' : 'IDKF',
-    'idkr' : 'IDKR',
-    'idkp' : 'IDKP',
-    'idf1' : 'IDF1',
-    'recall' : 'Rcll', 
-    'precision' : 'Prcn',
-    'num_unique_objects' : 'GT', 
-    'mostly_tracked' : 'MT', 
-    'partially_tracked' : 'PT', 
-    'mostly_lost': 'ML', 
-    'num_false_positives' : 'FP', 
-    'num_misses' : 'FN',
-    'num_switches' : 'IDs',
-    'mota' : 'MOTA',
-    'num_transfer' : 'IDt',
-    'num_ascend' : 'IDa',
-    'num_migrate' : 'IDm',
-}
-"""A list mappings for metric names to comply with MOTChallenge."""
-
-motplus_metric_names = {
-    'idf1' : 'IDF1',
-    'idp' : 'IDP',
-    'idr' : 'IDR',
-    'recall' : 'Rcll', 
-    'precision' : 'Prcn',
-    'num_unique_objects' : 'GT', 
-    'mostly_tracked' : 'MT', 
-    'partially_tracked' : 'PT', 
-    'mostly_lost': 'ML',  
-    'num_false_positives' : 'FP', 
-    'num_misses' : 'FN',
-    'num_switches' : 'IDs',
-    'num_fragmentations' : 'FM',
-    'mota' : 'MOTA',
-    'motp' : 'MOTP',
+other_metric_names = {
+    'idkf' : 'SAIDF',
+    'idkr' : 'SAIDR',
+    'idkp' : 'SAIDP',
     'num_transfer' : 'IDt',
     'num_ascend' : 'IDa',
     'num_migrate' : 'IDm',
@@ -330,6 +297,16 @@ motplus_metric_names = {
     'detection_recall': 'DtR',
     'tracker_precision': 'TP',
     'tracker_recall': 'TR',
-    'tracker_accuracy': 'TA',
 }
-"""A list mappings for metric names to comply with MOTChallenge."""
+"""A list mappings for metric names to comply with other metrics."""
+
+def config_metric_names(metrics):
+    ret = {}
+    for i in metrics:
+        if i in motchallenge_metric_names:
+            ret[i] = motchallenge_metric_names[i]
+        elif i in other_metric_names:
+            ret[i] = other_metric_names[i]
+        else:
+            ret[i] = i
+    return ret
