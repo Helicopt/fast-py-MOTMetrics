@@ -12,6 +12,8 @@ import pandas as pd
 from collections import OrderedDict
 from itertools import count
 from motmetrics.lap import linear_sum_assignment
+import motmetrics.io as io
+
 
 class MOTAccumulator(object):
     """Manage tracking events.
@@ -305,7 +307,8 @@ class MOTAccumulator(object):
             intersec = ix * iy
             iou = intersec / (w1*h1+w2*h2-intersec)
             return iou
-        IoU = lambda x, y: IoU_(x[:4], y[:4])
+        IoU = lambda x, y: x.iou(y) if io.engine_type=='senseTk'\
+                    else lambda x, y: IoU_(x[:4], y[:4])
         if metric_plus is not None:
             rest = []
             for d in d_det:

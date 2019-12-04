@@ -13,6 +13,18 @@ import pandas as pd
 import numpy as np
 import io
 
+global engine_type
+engine_type = 'pandas'
+
+def load_engine(engine):
+    global engine_type
+    engine_type = engine
+    if engine=='senseTk':
+        try:
+            import senseTk
+        except ImportError:
+            raise ImportError('senseTk not found, please try pandas (--engine pandas).')
+
 class Format(Enum):
     """Enumerates supported file formats."""
 
@@ -28,7 +40,7 @@ class Format(Enum):
     """
 
 
-def load_motchallenge(fname, **kwargs):
+def load_motchallenge(fname, ftype='gt', **kwargs):
     """Load MOT challenge data.
     
     Params
@@ -53,9 +65,19 @@ def load_motchallenge(fname, **kwargs):
             'X', 'Y', 'Width', 'Height', 'Confidence', 'ClassId', 'Visibility'
         The dataframe is indexed by ('FrameId', 'Id')    
     """
+    min_confidence = kwargs.pop('min_confidence', -1)
+    eps = 1e-6
+
+    if engine_type=='senseTk':
+        from senseTk.common import TrackSet
+        if ftype=='result':
+            df = TrackSet(fname, formatter='fr.i,id.i,x1,y1,w,h,cf,la.i,st,-1', filter=lambda x: x.conf>=min_confidence-eps)
+        if ftype=='gt':
+            df = TrackSet(fname, formatter='fr.i,id.i,x1,y1,w,h,cf,la.i,st', filter=lambda x: x.conf>=min_confidence)
+        return df
+
 
     sep = kwargs.pop('sep', '\s+|\t+|,')
-    min_confidence = kwargs.pop('min_confidence', -1)
     df = pd.read_csv(
         fname, 
         sep=sep, 

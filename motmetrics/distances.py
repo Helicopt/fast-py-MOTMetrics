@@ -128,6 +128,25 @@ def iou_matrix(objs, hyps, max_iou=1.):
     
 
 
+def sen_iou_matrix(objs, hyps, max_iou=1.):
+    ads = []
+    bds = []
+    for i in objs:
+        for j in hyps:
+            ads.append(i)
+            bds.append(j)
+    from senseTk.extension.boost_functional import c_iou_batch
+    ret = list(map(lambda x: np.nan if 1-x>max_iou else 1-x, c_iou_batch(ads, bds)))
+    C = np.array(ret).reshape(len(objs), len(hyps))
+    return C
 
-
+def sen_norm2squared_matrix(objs, hyps, max_d2=1.):
+    dist = lambda x, y: (x.x1 - y.x1)**2 + (x.y1 - y.y1)**2 + (x.w - y.w)**2 + (x.h - y.h)**2 
+    ret = []
+    for i in objs:
+        for j in hyps:
+            ret.append(dist(j, j))
+    ret = list(map(lambda x: np.nan if x>max_d2 else x, ret))
+    C = np.array(ret).reshape(len(objs), len(hyps))
+    return C
 

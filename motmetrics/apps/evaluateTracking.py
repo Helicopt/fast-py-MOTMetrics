@@ -68,6 +68,7 @@ string in the seqmap.""", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('-e', default=True, action='store_false', help='Exclude extended metrics')
     parser.add_argument('-i', default=True, action='store_false', help='Exclude idf1')
     parser.add_argument('-b', '--brief', default=False, action='store_true', help='Brief metric')
+    parser.add_argument('--engine', default='senseTk', choices=['senseTk', 'pandas'], help='Engine to do evaluation: senseTk (beta, fast), pandas (stable, slow)')
     return parser.parse_args()
 
 def compare_dataframes(gts, ts, log = '', iou = 0.5, det = None, label=None, fmt = 'mot16'):
@@ -127,6 +128,8 @@ def main():
 
     args = parse_args()
 
+    mm.io.load_engine(args.engine)
+
     loglevel = getattr(logging, args.loglevel.upper(), None)
     if not isinstance(loglevel, int):
         raise ValueError('Invalid log level: {} '.format(args.loglevel))
@@ -159,8 +162,8 @@ def main():
         for i, gtfile in enumerate(gtfiles):
             gtfiles[i] = generateSkippedGT(gtfile, args.skip, fmt=args.fmt)
     
-    gt = OrderedDict([(seqs[i], (mm.io.loadtxt(f, fmt=args.fmt), os.path.join(args.groundtruths, seqs[i], 'seqinfo.ini')) ) for i, f in enumerate(gtfiles)])
-    ts = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt)) for i, f in enumerate(tsfiles)])    
+    gt = OrderedDict([(seqs[i], (mm.io.loadtxt(f, fmt=args.fmt, ftype='gt'), os.path.join(args.groundtruths, seqs[i], 'seqinfo.ini')) ) for i, f in enumerate(gtfiles)])
+    ts = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt, ftype='result')) for i, f in enumerate(tsfiles)])    
     if args.detections is not None:
         dsfiles = [os.path.join(args.detections, '%s.txt'%i) for i in seqs]
         for dsfile in dsfiles:
@@ -169,7 +172,7 @@ def main():
                 exit(1)
         for i, dsfile in enumerate(dsfiles):
             dsfiles[i] = generateSkippedGT(dsfile, args.skip, fmt=args.fmt, block = args.block)
-        ds = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt)) for i, f in enumerate(dsfiles)])
+        ds = OrderedDict([(seqs[i], mm.io.loadtxt(f, fmt=args.fmt, ftype='detection')) for i, f in enumerate(dsfiles)])
     else:
         ds = None
 
