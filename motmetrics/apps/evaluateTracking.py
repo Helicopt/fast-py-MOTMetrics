@@ -199,4 +199,10 @@ def main():
     logging.info('Completed')
 
 if __name__ == '__main__':
-    main()
+    import cProfile
+    import pstats
+    cProfile.run("main()", 'restats')
+    p = pstats.Stats('restats')
+    p.sort_stats('cumtime', 'tottime')
+    p.print_stats()
+    # main()
