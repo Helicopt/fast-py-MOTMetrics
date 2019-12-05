@@ -400,10 +400,10 @@ def num_predictions(df, pred_frequencies):
     return pred_frequencies.sum()
 simple_add_func.append(num_predictions)
 
-def num_predictions(df):
-    """Total number of unique prediction appearances over all frames."""
-    return df.noraw.HId.count()
-simple_add_func.append(num_predictions)
+# def num_predictions(df):
+#     """Total number of unique prediction appearances over all frames."""
+#     return df.noraw.HId.count()
+# simple_add_func.append(num_predictions)
 
 def track_ratios(df, obj_frequencies):
     """Ratio of assigned to total appearance count per unique object id."""   
@@ -425,20 +425,23 @@ def mostly_lost(df, track_ratios):
     return track_ratios[track_ratios < 0.2].count()
 simple_add_func.append(mostly_lost)
 
-def num_fragmentations(df, obj_frequencies):
+def num_fragmentations(df, obj_frequencies, ana = None):
     """Total number of switches from tracked to not tracked."""
     fra = 0
     for o in obj_frequencies.index:
         # Find first and last time object was not missed (track span). Then count
         # the number switches from NOT MISS to MISS state.
-        dfo = df.noraw[df.noraw.OId == o]
-        notmiss = dfo[dfo.Type != 'MISS']
-        if len(notmiss) == 0:
-            continue
-        first = notmiss.index[0]
-        last = notmiss.index[-1]
-        diffs = dfo.loc[first:last].Type.apply(lambda x: 1 if x == 'MISS' else 0).diff()
-        fra += diffs[diffs == 1].count()
+        if ana is None:
+            dfo = df.noraw[df.noraw.OId == o]
+            notmiss = dfo[dfo.Type != 'MISS']
+            if len(notmiss) == 0:
+                continue
+            first = notmiss.index[0]
+            last = notmiss.index[-1]
+            diffs = dfo.loc[first:last].Type.apply(lambda x: 1 if x == 'MISS' else 0).diff()
+            fra += diffs[diffs == 1].count()
+        else:
+            fra += ana['fragment'].get(int(o), 0)
     return fra
 simple_add_func.append(num_fragmentations)
 
@@ -473,15 +476,13 @@ def recall(df, num_detections, num_objects):
 def recall_m(partials, num_detections, num_objects):
     return num_detections / max(num_objects, 1)
 
-def id_local_assignment(df, ana = None):
-    oids = df.full['OId'].dropna().unique()
-    hids = df.full['HId'].dropna().unique()
-    if ana is None:
-        hcs = [(h, len(df.raw[(df.raw.HId==h)].groupby(level=0))) for h in hids]
-        ocs = [(o, len(df.raw[(df.raw.OId==o)].groupby(level=0))) for o in oids]
-    else:
-        hcs = [(h, ana['hyp'][int(h)]) for h in hids if h!='nan' and np.isfinite(float(h))]
-        ocs = [(o, ana['obj'][int(o)]) for o in oids if o!='nan' and np.isfinite(float(o))]
+def id_local_assignment(df, obj_frequencies, pred_frequencies):
+    # oids = df.full['OId'].dropna().unique()
+    # hids = df.full['HId'].dropna().unique()
+    oids = obj_frequencies.dropna().keys().to_numpy()
+    hids = pred_frequencies.dropna().keys().to_numpy()
+    hcs = [(h, pred_frequencies[h]) for h in hids]
+    ocs = [(o, obj_frequencies[o]) for o in oids]
     IoUs_h = {}
     IoUs_o = {}
     ret = {
@@ -489,43 +490,42 @@ def id_local_assignment(df, ana = None):
             'hids': hcs,
             'candidates_h': IoUs_h,
             'candidates_o': IoUs_o,
-            'hid_lens': {h: hlen for h, hlen in hcs},
-            'oid_lens': {o: olen for o, olen in ocs}
+            'hid_lens': dict(hcs),
+            'oid_lens': dict(ocs)
           }
     df_ = df
     df = df_.raw.reset_index()
     df = df.set_index(['OId','HId'])
     df = df.sort_index(level=[0,1])
+    for h in hids:
+        IoUs_o[h] = []
     for r, o in enumerate(oids):
         df_o = df.loc[o, 'D'].dropna()
         tmp = []
         IoUs_h[o] = tmp
         for h, ex in df_o.groupby(level=0).count().iteritems():
             tmp.append((h, ex))
-    df = df_.raw.reset_index()
-    df = df.set_index(['HId','OId'])
-    df = df.sort_index(level=[0,1])
-    for r, h in enumerate(hids):
-        df_h = df.loc[h, 'D'].dropna()
-        tmp = []
-        IoUs_o[h] = tmp
-        for o, ex in df_h.groupby(level=0).count().iteritems():
-            tmp.append((o, ex))
+            IoUs_o[h].append((o, ex))
+    # df = df_.raw.reset_index()
+    # df = df.set_index(['HId','OId'])
+    # df = df.sort_index(level=[0,1])
+    # for r, h in enumerate(hids):
+    #     df_h = df.loc[h, 'D'].dropna()
+    #     tmp = []
+    #     IoUs_o[h] = tmp
+    #     for o, ex in df_h.groupby(level=0).count().iteritems():
+    #         tmp.append((o, ex))
     return ret
 
-def id_global_assignment(df, ana = None):
+def id_global_assignment(df, obj_frequencies, pred_frequencies):
     """ID measures: Global min-cost assignment for ID measures."""
     #st1 = time.time()
-    oids = df.full['OId'].dropna().unique()
-    hids = df.full['HId'].dropna().unique()
+    oids = obj_frequencies.dropna().keys().to_numpy()
+    hids = pred_frequencies.dropna().keys().to_numpy()
     hids_idx = dict((h,i) for i,h in enumerate(hids))
     #print('----'*2, '1', time.time()-st1)
-    if ana is None:
-        hcs = [len(df.raw[(df.raw.HId==h)].groupby(level=0)) for h in hids]
-        ocs = [len(df.raw[(df.raw.OId==o)].groupby(level=0)) for o in oids]
-    else:
-        hcs = [ana['hyp'][int(h)] for h in hids if h!='nan' and np.isfinite(float(h))]
-        ocs = [ana['obj'][int(o)] for o in oids if o!='nan' and np.isfinite(float(o))]
+    hcs = [pred_frequencies[h] for h in hids]
+    ocs = [obj_frequencies[o] for o in oids]
 
     #print('----'*2, '2', time.time()-st1)
     no = oids.shape[0]

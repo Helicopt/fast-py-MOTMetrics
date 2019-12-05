@@ -102,7 +102,7 @@ class MOTAccumulator(object):
         self.dirty_events = True
         self.cached_events_df = None
 
-    def update(self, oids, hids, dists, frameid=None, log='', metric_plus = None):
+    def update(self, oids, hids, dists, frameid=None, log='', metric_plus = None, metrics_qa = None):
         """Updates the accumulator with frame specific objects/detections.
 
         This method generates events based on the following algorithm [1]:
@@ -134,7 +134,7 @@ class MOTAccumulator(object):
         Returns
         -------
         frame_events : pd.DataFrame
-            Dataframe containing generated events
+            Dataframe containing generated events (old version)
 
         References
         ----------
@@ -143,9 +143,15 @@ class MOTAccumulator(object):
         """
 
         self.dirty_events = True
-        oids = ma.array(oids, mask=np.zeros(len(oids)))
-        hids = ma.array(hids, mask=np.zeros(len(hids)))
-        dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0]).copy()
+        if not isinstance(oids, np.ndarray):
+            oids = np.array(oids)
+        if not isinstance(hids, np.ndarray):
+            hids = np.array(hids)
+        if not isinstance(dists, np.ndarray):
+            dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0])
+        # oids = ma.array(oids, mask=np.zeros(len(oids)))
+        # hids = ma.array(hids, mask=np.zeros(len(hids)))
+        # dists = np.atleast_2d(dists).astype(float).reshape(oids.shape[0], hids.shape[0]).copy()
 
         if metric_plus is not None:
             d_oids = metric_plus['det_gt']
@@ -164,6 +170,10 @@ class MOTAccumulator(object):
             issue_n = []
             issue_fn = []
             issue_fp = []
+        if metrics_qa is not None:
+            if 'fragment' not in metrics_qa:
+                 metrics_qa['fragment'] = {}
+                 self.previous_frag = {}
 
         if frameid is None:
             assert self.auto_id, 'auto-id is not enabled'
@@ -195,6 +205,8 @@ class MOTAccumulator(object):
                 self._indices.append((frameid, next(eid)))
                 self._events.append(['RAW', oids[i], np.nan, np.nan])
 
+        matched_hyp = {}
+        matched_obj = {}
         if oids.size * hids.size > 0:
             # 1. Try to re-establish tracks from previous correspondences
             for i in range(oids.shape[0]):
@@ -202,6 +214,8 @@ class MOTAccumulator(object):
                     continue
 
                 hprev = self.m[oids[i]]
+                if hprev in matched_hyp:
+                    continue
                 j, = np.where(hids==hprev)
                 if j.shape[0] == 0:
                     continue
@@ -212,27 +226,47 @@ class MOTAccumulator(object):
                     h = hids[j]
                     if metric_plus is not None:
                         issue_y.append((o, h))
-                    oids[i] = ma.masked
-                    hids[j] = ma.masked
-                    self.m[oids.data[i]] = hids.data[j]
+                    # oids[i] = ma.masked
+                    # hids[j] = ma.masked
+                    # print(o, h, dists[i,j])
+                    matched_obj[oids[i]] = True
+                    matched_hyp[hids[j]] = True
+                    self.m[oids[i]] = hids[j]
 
                     self._indices.append((frameid, next(eid)))
-                    self._events.append(['MATCH', oids.data[i], hids.data[j], dists[i, j]])
+                    self._events.append(['MATCH', oids[i], hids[j], dists[i, j]])
                     self.last_match[o] = frameid
                     self.hypHistory[h] = frameid
 
             # 2. Try to remaining objects/hypotheses
-            dists[oids.mask, :] = np.nan
-            dists[:, hids.mask] = np.nan
-
+            # dists[oids.mask, :] = np.nan
+            # dists[:, hids.mask] = np.nan
+            remain_hids = []
+            remain_hidx = []
+            for _i, i in enumerate(hids):
+                if i not in matched_hyp:
+                    remain_hids.append(i)
+                    remain_hidx.append(_i)
+            hids = np.array(remain_hids)
+            remain_oids = []
+            remain_oidx = []
+            for _i, i in enumerate(oids):
+                if i not in matched_obj:
+                    remain_oids.append(i)
+                    remain_oidx.append(_i)
+            oids = np.array(remain_oids)
+            n_dists = np.empty((len(oids), len(hids)))
+            for _i, i in enumerate(oids):
+                for _j, j in enumerate(hids):
+                    n_dists[_i, _j] = dists[remain_oidx[_i], remain_hidx[_j]]
+            dists = n_dists
             rids, cids = linear_sum_assignment(dists)
 
             for i, j in zip(rids, cids):
                 if not np.isfinite(dists[i,j]):
                     continue
-
                 o = oids[i]
-                h = hids.data[j]
+                h = hids[j]
                 is_switch = o in self.m and \
                             self.m[o] != h and \
                             abs(frameid - self.last_occurrence[o]) <= self.max_switch_time
@@ -247,7 +281,7 @@ class MOTAccumulator(object):
                     if h not in self.hypHistory:
                         subcat = 'ASCEND'
                         self._indices.append((frameid, next(eid)))
-                        self._events.append([subcat, oids.data[i], hids.data[j], dists[i, j]])
+                        self._events.append([subcat, oids[i], hids[j], dists[i, j]])
                 is_transfer = h in self.res_m and \
                               self.res_m[h] != o #and \
                               # abs(frameid - self.last_occurrence[o]) <= self.max_switch_time # ignore this condition temporarily
@@ -256,9 +290,9 @@ class MOTAccumulator(object):
                     if o not in self.last_match:
                         subcat = 'MIGRATE'
                         self._indices.append((frameid, next(eid)))
-                        self._events.append([subcat, oids.data[i], hids.data[j], dists[i, j]])
+                        self._events.append([subcat, oids[i], hids[j], dists[i, j]])
                     self._indices.append((frameid, next(eid)))
-                    self._events.append([cat2, oids.data[i], hids.data[j], dists[i, j]])
+                    self._events.append([cat2, oids[i], hids[j], dists[i, j]])
                 if log!='' and (cat1!='MATCH' or cat2!='MATCH'):
                     if cat1=='SWITCH':
                         log.write('%s %d %d %d %d %d\n'%(cat1[:2], o, self.last_match[o], self.m[o], frameid, h))
@@ -267,23 +301,39 @@ class MOTAccumulator(object):
                 self.hypHistory[h] = frameid
                 self.last_match[o] = frameid
                 self._indices.append((frameid, next(eid)))
-                self._events.append([cat1, oids.data[i], hids.data[j], dists[i, j]])
-                oids[i] = ma.masked
-                hids[j] = ma.masked
+                self._events.append([cat1, oids[i], hids[j], dists[i, j]])
+                # oids[i] = ma.masked
+                # hids[j] = ma.masked
+                # print(o,h, dists[i,j])
+                matched_hyp[h] = True
+                matched_obj[o] = True
                 self.m[o] = h
                 self.res_m[h] = o
 
         # 3. All remaining objects are missed
-        for o in oids[~oids.mask]:
+        # print(oids, matched_obj)
+        # print(oids)
+        # input()
+        if metrics_qa is not None:
+            for i in matched_obj:
+                self.previous_frag[int(i)] = 'Hit'
+        for o in oids:
+            if o in matched_obj:continue
+            if metrics_qa is not None:
+                if self.previous_frag.get(int(o), 'Miss')=='Hit':
+                    metrics_qa['fragment'][int(o)] = metrics_qa['fragment'].get(int(o), 0) + 1
+                self.previous_frag[int(o)] = 'Miss'
+            # print(o, end=' ')
             self._indices.append((frameid, next(eid)))
             self._events.append(['MISS', o, np.nan, np.nan])
             if metric_plus is not None:
                 issue_fn.append(o)
             if log!='':
                 log.write('FN %d %d\n'%(frameid, o))
-
+        # input()
         # 4. All remaining hypotheses are false alarms
-        for h in hids[~hids.mask]:
+        for h in hids:
+            if h in matched_hyp: continue
             self._indices.append((frameid, next(eid)))
             self._events.append(['FP', np.nan, h, np.nan])
             if metric_plus is not None:
@@ -292,7 +342,7 @@ class MOTAccumulator(object):
                 log.write('FP %d %d\n'%(frameid, h))
 
         # 5. Update occurance state
-        for o in oids.data:
+        for o in oids:
             self.last_occurrence[o] = frameid
 
         def IoU_(xx, yy):

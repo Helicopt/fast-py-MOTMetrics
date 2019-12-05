@@ -112,13 +112,14 @@ def CLEAR_MOT_M_senseTk(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Widt
     compute_dist = compute_iou if dist.upper() == 'IOU' else compute_euc
 
     acc = MOTAccumulator()
+    fragments = {}
     #import time
     #print('preprocess start.')
     #pst = time.time()
     if fmt=='mot16':
-        print('before', dt.count())
+        # print('before', dt.count())
         dt = preprocessResult(dt, gt, inifile)
-        print('after', dt.count())
+        # print('after', dt.count())
         if det is not None:
             det = preprocessResult_det(det, gt, inifile, label)
     #pen = time.time()
@@ -146,7 +147,7 @@ def CLEAR_MOT_M_senseTk(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Widt
     en = max(gt.max_fr, dt.max_fr)
     allframeids = range(be, en+1)
 
-    analysis = {'hyp':{}, 'obj':{}}
+    analysis = {}
     m_plus = {(d+k):0 for d in list('YN') for k in ['Match', 'Track', 'FP', 'FN']}
     m_plus['Filter'] = 0
     for fid in allframeids:
@@ -159,12 +160,12 @@ def CLEAR_MOT_M_senseTk(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Widt
         for j in gt[fid]:
             oid = j.uid
             oids.append(oid)
-            analysis['obj'][oid] = analysis['obj'].get(oid, 0) + 1
+            # analysis['obj'][oid] = analysis['obj'].get(oid, 0) + 1
         oids = np.array(oids, dtype=np.int32)
         for j in dt[fid]:
             hid = j.uid
             hids.append(hid)
-            analysis['hyp'][hid] = analysis['hyp'].get(hid, 0) + 1
+            # analysis['hyp'][hid] = analysis['hyp'].get(hid, 0) + 1
         hids = np.array(hids, dtype=np.int32)
 
         if oids.shape[0] > 0 and hids.shape[0] > 0:
@@ -185,7 +186,7 @@ def CLEAR_MOT_M_senseTk(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Widt
         #print('gt', oids)
         #print('dt', hids)
         #print(dists.shape)
-        acc.update(oids, hids, dists, frameid=fid, log = log, metric_plus = dids)
+        acc.update(oids, hids, dists, frameid=fid, log = log, metric_plus = dids, metrics_qa = analysis)
         if dids:
             for k in m_plus:
                 m_plus[k]+=dids[k]
@@ -251,7 +252,7 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
     # detector. In case a frame is missing in GT this will lead to FPs, in 
     # case a frame is missing in detector results this will lead to FNs.
     allframeids = gt.index.union(dt.index).levels[0]
-    analysis = {'hyp':{}, 'obj':{}}
+    analysis = {}
     m_plus = {(d+k):0 for d in list('YN') for k in ['Match', 'Track', 'FP', 'FN']}
     m_plus['Filter'] = 0
     for fid in allframeids:
@@ -261,22 +262,12 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
         dists = np.empty((0,0))
 
         if fid in gt.index:
-            fgt = gt.loc[fid] 
+            fgt = gt.loc[fid]
             oids = fgt.index.values
-            for oid in oids:
-                oid = int(oid)
-                if oid not in analysis['obj']:
-                    analysis['obj'][oid] = 0
-                analysis['obj'][oid] += 1
 
         if fid in dt.index:
             fdt = dt.loc[fid]
             hids = fdt.index.values
-            for hid in hids:
-                hid = int(hid)
-                if hid not in analysis['hyp']:
-                    analysis['hyp'][hid] = 0
-                analysis['hyp'][hid] += 1
 
         if oids.shape[0] > 0 and hids.shape[0] > 0:
             dists = compute_dist(fgt[distfields].values, fdt[distfields].values)
@@ -304,7 +295,7 @@ def CLEAR_MOT_M(gt, dt, inifile, dist='iou', distfields=['X', 'Y', 'Width', 'Hei
                     #print(d)
                     #print(mx_id[1])
 
-        acc.update(oids, hids, dists, frameid=fid, log = log, metric_plus = dids)
+        acc.update(oids, hids, dists, frameid=fid, log = log, metric_plus = dids, metrics_qa = analysis)
         if dids:
             for k in m_plus:
                 m_plus[k]+=dids[k]
