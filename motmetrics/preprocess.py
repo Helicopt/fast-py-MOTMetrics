@@ -135,6 +135,8 @@ def senseTk_preprocessResult_det(res, gt, inifile, label):
         class_num = 1507442
     elif label=='R':
         class_num = 2125610
+    elif label=='F':
+        class_num = 37017
     st = time.time()
     labels = ['ped',           # 1
     'person_on_vhcl',    # 2
