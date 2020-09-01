@@ -124,9 +124,10 @@ def generateSkippedGT(gtfile, skip, fmt, block = 1):
     return tempfile
 
 
-def main():
+def main(args=None):
 
-    args = parse_args()
+    if args is None:
+        args = parse_args()
 
     mm.io.load_engine(args.engine)
 
